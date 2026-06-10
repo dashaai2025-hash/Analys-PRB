@@ -1,49 +1,834 @@
 <!doctype html>
 <html lang="ru">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Дашборд ЗГД по ГРР — реализация ПРБ</title>
-<style>
-:root{--bg:#f5f7fb;--panel:#fff;--ink:#111827;--muted:#64748b;--line:#d8dee9;--blue:#1f5fbf;--green:#12805c;--amber:#b46b00;--red:#bd2d2d;--purple:#6d28d9;--shadow:0 12px 28px rgba(15,23,42,.08)}
-*{box-sizing:border-box}body{margin:0;font-family:Arial,Helvetica,sans-serif;background:var(--bg);color:var(--ink)}header{background:#fff;border-bottom:1px solid var(--line);padding:22px 24px}h1{font-size:26px;margin:0 0 8px}h2{font-size:18px;margin:0 0 12px}p{margin:0;color:var(--muted)}main{max-width:1500px;margin:0 auto;padding:20px 24px 34px}.filters{display:grid;grid-template-columns:repeat(6,minmax(140px,1fr)) auto;gap:10px;align-items:end;margin-bottom:16px}label{display:block;font-size:12px;color:var(--muted);margin-bottom:5px}select,input,button{height:36px;border:1px solid var(--line);border-radius:7px;background:#fff;padding:0 10px;font-size:14px;width:100%}button{cursor:pointer;background:var(--blue);color:#fff;border-color:var(--blue)}.kpis{display:grid;grid-template-columns:repeat(6,1fr);gap:12px;margin-bottom:16px}.kpi,.panel,.insight{background:var(--panel);border:1px solid var(--line);border-radius:10px;box-shadow:var(--shadow)}.kpi{padding:13px}.kpi span{display:block;color:var(--muted);font-size:12px}.kpi b{display:block;font-size:24px;margin:7px 0 2px}.kpi small{color:var(--muted)}.layout{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}.panel{padding:16px;min-width:0}canvas{width:100%;height:330px;display:block}.tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}.tabs button{background:#fff;color:var(--ink);border-color:var(--line);width:auto}.tabs button.active{background:var(--blue);color:#fff;border-color:var(--blue)}.insights{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px}.insight{padding:13px;border-left:4px solid var(--blue)}.insight b{display:block;margin-bottom:6px}.insight.bad{border-left-color:var(--red)}.insight.good{border-left-color:var(--green)}.insight.warn{border-left-color:var(--amber)}.heat{display:grid;grid-template-columns:2fr .6fr 1fr 1fr 1fr;gap:0;border:1px solid var(--line);border-radius:8px;overflow:hidden}.heat div{padding:8px;border-bottom:1px solid var(--line);background:#fff;font-size:12px}.heat .head{background:#eef2f7;font-weight:bold;color:#334155}.risk-hi{color:var(--red);font-weight:bold}.risk-mid{color:var(--amber);font-weight:bold}.risk-ok{color:var(--green);font-weight:bold}.table-wrap{overflow:auto;max-height:520px;border:1px solid var(--line);border-radius:8px}table{border-collapse:collapse;width:100%;min-width:1250px;font-size:12px}th,td{padding:8px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}th{position:sticky;top:0;background:#eef2f7;cursor:pointer;z-index:1}td:first-child,th:first-child,td:nth-child(2),th:nth-child(2),td:nth-child(3),th:nth-child(3),td:nth-child(4),th:nth-child(4){text-align:left}tr:hover td{background:#f8fafc}.goodtxt{color:var(--green);font-weight:bold}.badtxt{color:var(--red);font-weight:bold}.muted{color:var(--muted)}.tooltip{position:fixed;display:none;background:#0f172a;color:#fff;padding:8px 10px;border-radius:8px;font-size:12px;pointer-events:none;z-index:20;max-width:280px}.status{padding:9px 12px;border:1px dashed var(--line);border-radius:8px;background:#fff;margin-bottom:14px;color:var(--muted);font-size:13px}
-@media(max-width:1050px){.filters,.kpis,.layout,.insights{grid-template-columns:1fr 1fr}}@media(max-width:720px){main,header{padding-left:14px;padding-right:14px}.filters,.kpis,.layout,.insights{grid-template-columns:1fr}h1{font-size:22px}canvas{height:290px}}
-</style>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Интерактивный дашборд НДН и ГИР</title>
+  <style>
+    :root {
+      --bg: #f4f6f8;
+      --panel: #ffffff;
+      --ink: #122033;
+      --muted: #667085;
+      --line: #d8dee8;
+      --blue: #1261a6;
+      --cyan: #00a3a3;
+      --green: #16805b;
+      --amber: #b86b00;
+      --red: #bd2d2d;
+      --violet: #6d5bd0;
+      --shadow: 0 10px 24px rgba(18, 32, 51, .07);
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: Arial, Helvetica, sans-serif; background: var(--bg); color: var(--ink); }
+    header { background: #fff; border-bottom: 1px solid var(--line); padding: 22px 28px 16px; }
+    h1 { margin: 0 0 6px; font-size: 28px; line-height: 1.15; letter-spacing: 0; }
+    h2 { margin: 0 0 12px; font-size: 18px; }
+    h3 { margin: 0 0 8px; font-size: 14px; }
+    p { margin: 0; color: var(--muted); }
+    main { max-width: 1540px; margin: 0 auto; padding: 18px 24px 30px; }
+    .topline { display: flex; gap: 12px; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; }
+    .source { color: var(--muted); font-size: 12px; }
+    .filters { display: grid; grid-template-columns: repeat(6, minmax(125px, 1fr)); gap: 10px; margin: 14px 0 16px; }
+    label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 5px; }
+    select, input { width: 100%; height: 36px; border: 1px solid var(--line); border-radius: 6px; background: #fff; color: var(--ink); padding: 0 10px; font-size: 14px; }
+    button { height: 36px; border: 1px solid var(--blue); border-radius: 6px; background: var(--blue); color: #fff; padding: 0 12px; cursor: pointer; }
+    .multi-filter { position: relative; }
+    .multi-toggle { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 8px; background: #fff; color: var(--ink); border-color: var(--line); text-align: left; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+    .multi-toggle::after { content: "▾"; color: var(--muted); font-size: 12px; flex: 0 0 auto; }
+    .multi-menu { position: absolute; z-index: 20; top: calc(100% + 6px); left: 0; right: 0; display: none; max-height: 190px; overflow: auto; padding: 8px; background: #fff; border: 1px solid var(--line); border-radius: 8px; box-shadow: var(--shadow); }
+    .multi-filter.open .multi-menu { display: block; }
+    .multi-option { display: flex; align-items: center; gap: 8px; min-height: 30px; padding: 5px 6px; border-radius: 6px; font-size: 13px; color: var(--ink); cursor: pointer; }
+    .multi-option:hover { background: #f3f6fa; }
+    .multi-option input { width: 15px; height: 15px; padding: 0; margin: 0; }
+    .kpis { display: grid; grid-template-columns: repeat(8, 1fr); gap: 10px; margin-bottom: 14px; }
+    .kpi, .panel, .problem-card { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; box-shadow: var(--shadow); }
+    .kpi { padding: 13px; min-height: 98px; position: relative; overflow: hidden; }
+    .kpi::after { content: ""; position: absolute; inset: auto 0 0 0; height: 4px; background: var(--accent, var(--blue)); }
+    .kpi span { display: block; color: var(--muted); font-size: 12px; line-height: 1.25; min-height: 30px; }
+    .kpi b { display: block; margin-top: 8px; font-size: 24px; line-height: 1.05; }
+    .kpi small { display: block; margin-top: 4px; color: var(--muted); font-size: 11px; }
+    .grid { display: grid; grid-template-columns: 1.2fr .8fr; gap: 14px; margin-bottom: 14px; }
+    .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; margin-bottom: 14px; }
+    .panel { padding: 15px; min-width: 0; }
+    main > .panel { margin-bottom: 14px; }
+    .panel-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; margin-bottom: 8px; }
+    .slice-controls { min-width: 220px; }
+    canvas { width: 100%; height: 330px; display: block; }
+    .short canvas { height: 250px; }
+    .insights { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 14px; }
+    .insight { padding: 12px; background: #fff; border: 1px solid var(--line); border-radius: 8px; }
+    .insight b { display: block; font-size: 18px; margin-bottom: 4px; }
+    .split { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .progress { height: 9px; background: #e8edf3; border-radius: 999px; overflow: hidden; margin-top: 8px; }
+    .progress i { display: block; height: 100%; width: var(--w); background: var(--c, var(--blue)); }
+    .legend { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 8px; color: var(--muted); font-size: 12px; }
+    .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 5px; vertical-align: -1px; }
+    .problem-list { display: grid; gap: 8px; max-height: 335px; overflow: auto; padding-right: 4px; }
+    .problem-card { padding: 10px; box-shadow: none; }
+    .problem-head { display: flex; justify-content: space-between; gap: 10px; align-items: baseline; }
+    .badge { display: inline-block; padding: 3px 7px; border-radius: 999px; font-size: 11px; border: 1px solid var(--line); background: #f8fafc; color: var(--muted); }
+    .badge.red { border-color: #f0c5c5; color: var(--red); background: #fff5f5; }
+    .badge.green { border-color: #bce3d3; color: var(--green); background: #f2fbf7; }
+    .badge.amber { border-color: #f1d5a7; color: var(--amber); background: #fff9ef; }
+    .table-wrap { overflow: auto; max-height: 480px; border: 1px solid var(--line); border-radius: 8px; background: #fff; }
+    table { border-collapse: collapse; min-width: 1260px; width: 100%; font-size: 12px; }
+    th, td { border-bottom: 1px solid var(--line); padding: 8px 9px; text-align: right; white-space: nowrap; }
+    th { position: sticky; top: 0; background: #eef3f8; z-index: 1; cursor: pointer; }
+    td:first-child, td:nth-child(2), th:first-child, th:nth-child(2) { text-align: left; }
+    .heatmap { display: grid; gap: 6px; }
+    .heat-row { display: grid; grid-template-columns: 120px repeat(3, 1fr); gap: 6px; align-items: center; }
+    .heat-cell { min-height: 48px; border-radius: 6px; padding: 7px; background: #edf2f7; color: var(--ink); font-size: 12px; }
+    .heat-cell b { display: block; font-size: 16px; }
+    @media (max-width: 1200px) {
+      .filters, .kpis, .insights, .grid, .grid-3 { grid-template-columns: 1fr 1fr; }
+    }
+    @media (max-width: 720px) {
+      header, main { padding-left: 14px; padding-right: 14px; }
+      .filters, .kpis, .insights, .grid, .grid-3, .split { grid-template-columns: 1fr; }
+      canvas { height: 280px; }
+      .heat-row { grid-template-columns: 100px repeat(3, minmax(76px, 1fr)); }
+    }
+  </style>
 </head>
 <body>
-<header><h1>Дашборд ЗГД по ГРР: ключевые выводы и проблемы реализации ПРБ</h1><p>Фокус: НГЗ/НДН по факту, готовность к ГИР, проблемные объекты, сравнение по ДО, типам отложений и ТРИЗ.</p></header>
-<main>
-<div class="status" id="status">Загрузка данных…</div>
-<section class="filters">
-<div><label>ДО</label><select id="fDo"></select></div><div><label>Тип отложений</label><select id="fDep"></select></div><div><label>ТРИЗ</label><select id="fTriz"></select></div><div><label>Этап</label><select id="fStage"></select></div><div><label>ГИР</label><select id="fGir"></select></div><div><label>Поиск</label><input id="fSearch" placeholder="ПРБ, решение, комментарий"></div><button id="reset">Сброс</button>
-</section>
-<section class="kpis" id="kpis"></section>
-<section class="insights" id="insights"></section>
-<section class="layout"><div class="panel"><h2>НГЗ факт vs НДН факт</h2><canvas id="scatter"></canvas></div><div class="panel"><h2>Рейтинг ПРБ</h2><div class="tabs" id="metricTabs"><button class="active" data-metric="ngz_fact">НГЗ факт</button><button data-metric="ndn_fact">НДН факт</button><button data-metric="ngz_delta_pct">∆ НГЗ</button><button data-metric="ndn_delta_pct">∆ НДН</button><button data-metric="risk_score">Риск</button></div><canvas id="rank"></canvas></div></section>
-<section class="layout"><div class="panel"><h2>Сравнение групп</h2><div class="tabs" id="groupTabs"><button class="active" data-group="do">ДО</button><button data-group="deposition">Отложения</button><button data-group="triz">ТРИЗ</button><button data-group="driver">Пласт-драйвер</button></div><canvas id="grouped"></canvas></div><div class="panel"><h2>Матрица проблем реализации</h2><canvas id="risk"></canvas></div></section>
-<section class="panel" style="margin-bottom:16px"><h2>Проблемы по типам отложений</h2><div class="heat" id="heat"></div></section>
-<section class="panel"><h2>Детальная таблица</h2><div class="table-wrap"><table id="detail"><thead><tr><th data-sort="well">ПРБ</th><th data-sort="do">ДО</th><th data-sort="deposition">Тип отложений</th><th data-sort="triz">ТРИЗ</th><th data-sort="gir_ready">ГИР</th><th data-sort="ngz_fact">НГЗ факт</th><th data-sort="ngz_delta_pct">∆ НГЗ</th><th data-sort="ndn_fact">НДН факт</th><th data-sort="ndn_delta_pct">∆ НДН</th><th data-sort="cost_delta_pct">∆ стоимость</th><th data-sort="npv_fact">NPV факт</th><th data-sort="risk_score">Риск</th><th>Успех</th><th>Решение</th><th>Комментарий</th></tr></thead><tbody></tbody></table></div></section>
-</main><div id="tooltip" class="tooltip"></div>
-<script>
-const DATA = {"records": [{"id": 1, "gcos_plan": 1, "gcos_fact": 1, "cost_plan": 22.06763923622284, "cost_fact": 22.157250098775187, "cost_delta_pct": 0.4060736247910778, "ngz_plan": 12.314467005076141, "ngz_fact": 18.527918781725887, "ngz_delta_pct": 50.456522187184405, "prod_plan": 0.9535211267605636, "prod_fact": 0.8507042253521128, "prod_delta_pct": -10.782865583456433, "npv_plan": 693.0294134576643, "npv_fact": 809.3017901341162, "structure_error": 0.05, "do": "Х", "well": "1", "stage": "Поиск", "gir_ready": "Да", "start_year": "2026", "heff": ">Р10", "kp": "P10>Кп>P90", "contact_forecast": "Р50", "area": "", "nnt": ">Р10", "sgm": "0.5", "npv_positive": "1", "success": "У", "effectiveness": "1", "deposition": "КОНУС ВЫНОСА", "heff_method_1": "Инверсия", "heff_method_2": "Инверсия, Sum of positive amplitude", "rb_plan": "ВОРБ", "rb_fact": "ВОРБ (а)", "p10_p90_plan": "1.6-2", "p10_p90_fact": "", "ngz_class": "Р50", "kpr_eff_plan": "0.7", "kpr_nnt_plan": "", "kpr_nnt_fact": "-", "driver": "Ач", "triz": "Традиционный коллектор", "decision": "АИ и Vp/Vs", "test": "В испытании", "comment": "", "ndn_plan": 0.9535211267605636, "ndn_fact": 0.8507042253521128, "ndn_delta_pct": -10.782865583456433, "risk_score": 11.188939208247511, "npv_delta": 116.27237667645193}, {"id": 2, "gcos_plan": 1, "gcos_fact": 1, "cost_plan": 15.803647379213475, "cost_fact": 15.906756222836826, "cost_delta_pct": 0.6524370048838875, "ngz_plan": 19.083756345177665, "ngz_fact": 24.274111675126903, "ngz_delta_pct": 27.197765660327168, "prod_plan": 0.5295774647887325, "prod_fact": 0.5584507042253521, "prod_delta_pct": 5.45212765957446, "npv_plan": 684.970931905831, "npv_fact": 415.5874057445462, "structure_error": 1.04, "do": "Х", "well": "2", "stage": "Поиск", "gir_ready": "Да", "start_year": "2025", "heff": ">Р10", "kp": "P10>Кп>P90", "contact_forecast": "Р50", "area": "P10>S>P50", "nnt": ">Р10", "sgm": "0.5", "npv_positive": "1", "success": "У", "effectiveness": "1", "deposition": "М-М БАРЫ", "heff_method_1": "АИ и Vp/Vs", "heff_method_2": "АИ и Vp/Vs", "rb_plan": "ВОРБ", "rb_fact": "ВОРБ", "p10_p90_plan": "1.4", "p10_p90_fact": "1.4", "ngz_class": ">P10", "kpr_eff_plan": "1.3", "kpr_nnt_plan": "", "kpr_nnt_fact": "-", "driver": "Неоком", "triz": "Традиционный коллектор", "decision": "АИ и Vp/Vs", "test": "+", "comment": "", "ndn_plan": 0.5295774647887325, "ndn_fact": 0.5584507042253521, "ndn_delta_pct": 5.45212765957446, "risk_score": 0.6524370048838875, "npv_delta": -269.3835261612848}, {"id": 3, "gcos_plan": 1, "gcos_fact": 1, "cost_plan": 28.790623687608928, "cost_fact": 29.74813133866543, "cost_delta_pct": 3.3257621003486637, "ngz_plan": 100.50761421319795, "ngz_fact": 93.40101522842639, "ngz_delta_pct": -7.070707070707064, "prod_plan": 3.098591549295775, "prod_fact": 2.95774647887324, "prod_delta_pct": -4.545454545454539, "npv_plan": 516.8940309675935, "npv_fact": 790.8824037299258, "structure_error": 0.94, "do": "Х", "well": "3", "stage": "Разведка", "gir_ready": "Да", "start_year": "2026", "heff": "P10>Нэф>P50", "kp": "P10>Кп>P90", "contact_forecast": "Р50", "area": "P10>S>P50", "nnt": "P10>ННТ>P90", "sgm": "1", "npv_positive": "1", "success": "БУ", "effectiveness": "1", "deposition": "КОНУС ВЫНОСА", "heff_method_1": "АИ и Vp/Vs", "heff_method_2": "АИ и Vp/Vs", "rb_plan": "ВОРБ", "rb_fact": "ВОРБ (а)", "p10_p90_plan": "1.8", "p10_p90_fact": "", "ngz_class": "Р50", "kpr_eff_plan": "1.6", "kpr_nnt_plan": "", "kpr_nnt_fact": "-", "driver": "Ач", "triz": "Традиционный коллектор", "decision": "АИ и Vp/Vs", "test": "В испытании", "comment": "", "ndn_plan": 3.098591549295775, "ndn_fact": 2.95774647887324, "ndn_delta_pct": -4.545454545454539, "risk_score": 14.941923716510267, "npv_delta": 273.98837276233235}, {"id": 4, "gcos_plan": 1, "gcos_fact": 1, "cost_plan": 18.877457557866457, "cost_fact": 18.625361763935206, "cost_delta_pct": -1.3354329795656141, "ngz_plan": 25.63451776649746, "ngz_fact": 22.33502538071066, "ngz_delta_pct": -12.871287128712861, "prod_plan": 1.4084507042253522, "prod_fact": 1.1267605633802817, "prod_delta_pct": -20.000000000000004, "npv_plan": 693.0294134576643, "npv_fact": 979.6811143728776, "structure_error": 0.74, "do": "Х", "well": "4", "stage": "Поиск", "gir_ready": "Да", "start_year": "2026", "heff": "P10>Нэф>P50", "kp": "P10>Кп>P90", "contact_forecast": "Р10", "area": "", "nnt": ">Р10", "sgm": "1", "npv_positive": "1", "success": "БУ", "effectiveness": "1", "deposition": "КОНУС ВЫНОСА", "heff_method_1": "Инверсия", "heff_method_2": "Инверсия, Sum of positive amplitude", "rb_plan": "ВОРБ", "rb_fact": "ВОРБ (а)", "p10_p90_plan": "4.1", "p10_p90_fact": "", "ngz_class": "Р90-Р50", "kpr_eff_plan": "0.7", "kpr_nnt_plan": "", "kpr_nnt_fact": "-", "driver": "Ач", "triz": "Традиционный коллектор", "decision": "АИ и Vp/Vs", "test": "В испытании", "comment": "", "ndn_plan": 1.4084507042253522, "ndn_fact": 1.1267605633802817, "ndn_delta_pct": -20.000000000000004, "risk_score": 32.871287128712865, "npv_delta": 286.65170091521327}, {"id": 5, "gcos_plan": 1, "gcos_fact": 1, "cost_plan": 21.076515196801466, "cost_fact": 20.161407370809957, "cost_delta_pct": -4.341836482201687, "ngz_plan": 41.37055837563452, "ngz_fact": 41.37055837563452, "ngz_delta_pct": null, "prod_plan": 1.267605633802817, "prod_fact": 1.256056338028169, "prod_delta_pct": -0.9111111111111134, "npv_plan": 663.0979105508549, "npv_fact": 927.876590111092, "structure_error": 0.1, "do": "Х", "well": "5", "stage": "Разведка", "gir_ready": "Да", "start_year": "2026", "heff": "P50>Нэф>P90", "kp": "P10>Кп>P90", "contact_forecast": "Р50", "area": "", "nnt": "", "sgm": "1", "npv_positive": "1", "success": "БУ", "effectiveness": "1", "deposition": "КОНУС + М-М БАРЫ", "heff_method_1": "Инверсия", "heff_method_2": "Инверсия", "rb_plan": "ВОРБ", "rb_fact": "ВОРБ (а)", "p10_p90_plan": "2.1-3.4", "p10_p90_fact": "", "ngz_class": "Р50", "kpr_eff_plan": "1.4", "kpr_nnt_plan": "", "kpr_nnt_fact": "-", "driver": "Неоком+Ач", "triz": "Традиционный коллектор", "decision": "АИ и Vp/Vs", "test": "В испытании", "comment": "", "ndn_plan": 1.267605633802817, "ndn_fact": 1.256056338028169, "ndn_delta_pct": -0.9111111111111134, "risk_score": 0.9111111111111134, "npv_delta": 264.77867956023715}, {"id": 6, "gcos_plan": 1, "gcos_fact": 1, "cost_plan": 9.296483603318848, "cost_fact": 10.001007700908731, "cost_delta_pct": 7.578393375946671, "ngz_plan": 6.85279187817259, "ngz_fact": 11.134517766497462, "ngz_delta_pct": 62.48148148148146, "prod_plan": 0.057323943661971834, "prod_fact": 0.057323943661971834, "prod_delta_pct": 0, "npv_plan": 27.686640188798712, "npv_fact": 27.629079606285618, "structure_error": 1.2, "do": "Х", "well": "6", "stage": "Поиск", "gir_ready": "Да", "start_year": "2026", "heff": "<P90", "kp": "P10>Кп>P90", "contact_forecast": "<P90", "area": "", "nnt": "", "sgm": "0.5", "npv_positive": "1", "success": "У", "effectiveness": "1", "deposition": "РУСЛА", "heff_method_1": "Прогноз СРР", "heff_method_2": "Прогноз СРР", "rb_plan": "ВОРБ", "rb_fact": "ВОРБ (а)", "p10_p90_plan": "1.9", "p10_p90_fact": "", "ngz_class": "Р50", "kpr_eff_plan": "-", "kpr_nnt_plan": "", "kpr_nnt_fact": "-", "driver": "Тюменка", "triz": "ТРИЗ", "decision": "ФАЦИИ ПОЯСОВ МЕАНДРИРОВАНИЯ, ПРИУРОЧЕННЫЕ К СТРУКТУРНЫМ ПОДНЯТИЯМ", "test": "В испытании", "comment": "", "ndn_plan": 0.057323943661971834, "ndn_fact": 0.057323943661971834, "ndn_delta_pct": 0.0, "risk_score": 7.578393375946671, "npv_delta": -0.05756058251309426}, {"id": 7, "gcos_plan": 0.8, "gcos_fact": 1, "cost_plan": 21.216910312129595, "cost_fact": 18.639745292374556, "cost_delta_pct": -12.146749841713229, "ngz_plan": 16.243654822335028, "ngz_fact": 5.0761421319796955, "ngz_delta_pct": -68.75, "prod_plan": 1.5492957746478875, "prod_fact": 0.8450704225352114, "prod_delta_pct": -45.45454545454545, "npv_plan": 505.38191446497444, "npv_fact": 401.7728659414034, "structure_error": 0.4, "do": "Х", "well": "7", "stage": "Поиск", "gir_ready": "Частично", "start_year": "2025", "heff": "P10>Нэф>P50", "kp": "P10>Кп>P90", "contact_forecast": "<P90", "area": "<P90", "nnt": "P10>ННТ>P90", "sgm": "0.5", "npv_positive": "1", "success": "У", "effectiveness": "1", "deposition": "ДЕЛЬТА", "heff_method_1": "Mean amplitude", "heff_method_2": "Mean amplitude", "rb_plan": "ВОРБ", "rb_fact": "ВОРБ (а)", "p10_p90_plan": "2.1", "p10_p90_fact": "", "ngz_class": "<Р90", "kpr_eff_plan": "1.7", "kpr_nnt_plan": "", "kpr_nnt_fact": "-", "driver": "Неоком", "triz": "Традиционный коллектор", "decision": "АИ и Vp/Vs", "test": "В испытании", "comment": "", "ndn_plan": 1.5492957746478875, "ndn_fact": 0.8450704225352114, "ndn_delta_pct": -45.45454545454545, "risk_score": 129.20454545454544, "npv_delta": -103.60904852357106}, {"id": 8, "gcos_plan": 0.64, "gcos_fact": 0, "cost_plan": 19.530807940339788, "cost_fact": 17.90786526933228, "cost_delta_pct": -8.3096545517475, "ngz_plan": 9.390862944162437, "ngz_fact": 0.0, "ngz_delta_pct": -100.0, "prod_plan": 0.4225352112676057, "prod_fact": 0, "prod_delta_pct": -100, "npv_plan": 171.5305358890232, "npv_fact": null, "structure_error": 0.78, "do": "Х", "well": "8", "stage": "Поиск", "gir_ready": "Нет", "start_year": "", "heff": "нет кол-ра", "kp": "-", "contact_forecast": "-", "area": "-", "nnt": "-", "sgm": "0", "npv_positive": "0", "success": "Н", "effectiveness": "0", "deposition": "ДЕЛЬТА", "heff_method_1": "Sum of magnitude", "heff_method_2": "Sum of magnitude", "rb_plan": "ВОРБ", "rb_fact": "Неуспех ПО", "p10_p90_plan": "2.5", "p10_p90_fact": "-", "ngz_class": "-", "kpr_eff_plan": "", "kpr_nnt_plan": "", "kpr_nnt_fact": "", "driver": "Неоком", "triz": "Традиционный коллектор", "decision": "", "test": "Неуспех ПО", "comment": "", "ndn_plan": 0.4225352112676057, "ndn_fact": 0.0, "ndn_delta_pct": -100.0, "risk_score": 215.0, "npv_delta": -171.5305358890232}, {"id": 9, "gcos_plan": 0.86, "gcos_fact": 0, "cost_plan": 29.158435401027265, "cost_fact": 35.6775977874358, "cost_delta_pct": 22.35772357723577, "ngz_plan": 42.639593908629436, "ngz_fact": 0.0, "ngz_delta_pct": -100.0, "prod_plan": 2.2535211267605635, "prod_fact": 0, "prod_delta_pct": -100, "npv_plan": 204.91567374661832, "npv_fact": null, "structure_error": 0.73, "do": "Н", "well": "9", "stage": "Поиск", "gir_ready": "Нет", "start_year": "", "heff": "P50>Нэф>P90", "kp": "P10>Кп>P90", "contact_forecast": "<P90", "area": "вода", "nnt": "вода", "sgm": "0.5", "npv_positive": "0", "success": "Н", "effectiveness": "0", "deposition": "ДЕЛЬТА", "heff_method_1": "от Ноб", "heff_method_2": "от Ноб", "rb_plan": "ВОРБ", "rb_fact": "Неуспех ПО", "p10_p90_plan": "12", "p10_p90_fact": "-", "ngz_class": "-", "kpr_eff_plan": "", "kpr_nnt_plan": "", "kpr_nnt_fact": "", "driver": "Верх юра", "triz": "Традиционный коллектор", "decision": "наличие структуры", "test": "Неуспех ПО", "comment": "", "ndn_plan": 2.2535211267605635, "ndn_fact": 0.0, "ndn_delta_pct": -100.0, "risk_score": 237.3577235772358, "npv_delta": -204.91567374661832}, {"id": 10, "gcos_plan": 0.75, "gcos_fact": 1, "cost_plan": 38.24575266693007, "cost_fact": 51.550296325563025, "cost_delta_pct": 34.78698347107437, "ngz_plan": 64.72081218274111, "ngz_fact": 54.06091370558376, "ngz_delta_pct": -16.470588235294112, "prod_plan": 2.016901408450704, "prod_fact": 5.494366197183099, "prod_delta_pct": 172.41620111731842, "npv_plan": 391.41196108904626, "npv_fact": 1626.6620618200657, "structure_error": 2.5, "do": "Н", "well": "10", "stage": "Поиск", "gir_ready": "Частично", "start_year": "2026", "heff": ">Р10", "kp": "P10>Кп>P90", "contact_forecast": "Р10", "area": "P10>S>P50", "nnt": ">Р10", "sgm": "0.5", "npv_positive": "1", "success": "У", "effectiveness": "1", "deposition": "ДЕЛЬТА", "heff_method_1": "от Ноб", "heff_method_2": "от Ноб", "rb_plan": "ВОРБ", "rb_fact": "Неуспех ПО", "p10_p90_plan": "20", "p10_p90_fact": "2.4", "ngz_class": "Р10-Р50", "kpr_eff_plan": "5", "kpr_nnt_plan": "18", "kpr_nnt_fact": "249", "driver": "Верх юра", "triz": "Традиционный коллектор", "decision": "наличие структуры", "test": "+", "comment": "", "ndn_plan": 2.016901408450704, "ndn_fact": 5.494366197183099, "ndn_delta_pct": 172.41620111731842, "risk_score": 66.25757170636848, "npv_delta": 1235.2501007310193}, {"id": 11, "gcos_plan": 1, "gcos_fact": 1, "cost_plan": 5.807981035163968, "cost_fact": 6.361122086131965, "cost_delta_pct": 9.523809523809526, "ngz_plan": 5.799746192893401, "ngz_fact": 7.535532994923858, "ngz_delta_pct": 29.92866832961359, "prod_plan": 0.32676056338028175, "prod_fact": 0.6319718309859146, "prod_delta_pct": 93.4051724137928, "npv_plan": 120.87722327749958, "npv_fact": 521.4988775686411, "structure_error": 0.62, "do": "Н", "well": "11", "stage": "Разведка", "gir_ready": "Да", "start_year": "2025", "heff": "другой пласт", "kp": "-", "contact_forecast": "-", "area": "-", "nnt": "-", "sgm": "0", "npv_positive": "1", "success": "У", "effectiveness": "1", "deposition": "П-О КАНАЛЫ", "heff_method_1": "Интерполяция", "heff_method_2": "Интерполяция", "rb_plan": "ВОРБ", "rb_fact": "ДО", "p10_p90_plan": "2", "p10_p90_fact": "-", "ngz_class": "другой пласт", "kpr_eff_plan": "-", "kpr_nnt_plan": "", "kpr_nnt_fact": "-", "driver": "Тюменка", "triz": "ТРИЗ", "decision": "бар в Ю1-1 по атрибутам+русловое тело по Ю2-4", "test": "+", "comment": "Был драйвер Ю1, в добычу пошла Ю2-Ю3", "ndn_plan": 0.32676056338028175, "ndn_fact": 0.6319718309859146, "ndn_delta_pct": 93.4051724137928, "risk_score": 9.523809523809526, "npv_delta": 400.6216542911415}, {"id": 12, "gcos_plan": 1, "gcos_fact": 1, "cost_plan": 7.34887396286053, "cost_fact": 6.1240616357171085, "cost_delta_pct": -16.666666666666664, "ngz_plan": 4.314720812182741, "ngz_fact": 7.9822335025380715, "ngz_delta_pct": 85.00000000000001, "prod_plan": 0.19436619718309864, "prod_fact": 1.2098591549295776, "prod_delta_pct": 522.463768115942, "npv_plan": 75.97996891728545, "npv_fact": 635.4688309445692, "structure_error": 0.5, "do": "Н", "well": "12", "stage": "Разведка", "gir_ready": "Да", "start_year": "2026", "heff": ">Р10", "kp": "P10>Кп>P90", "contact_forecast": "P90", "area": "P50>S>P90", "nnt": "P10>ННТ>P90", "sgm": "0.5", "npv_positive": "1", "success": "У", "effectiveness": "1", "deposition": "ДЕЛЬТА", "heff_method_1": "Интерполяция", "heff_method_2": "Интерполяция", "rb_plan": "ВОРБ", "rb_fact": "ДО", "p10_p90_plan": "1.6", "p10_p90_fact": "-", "ngz_class": ">P10", "kpr_eff_plan": "7.3", "kpr_nnt_plan": "39", "kpr_nnt_fact": "45", "driver": "Верх юра", "triz": "Традиционный коллектор", "decision": "структурно-тектоническая ловушка с хорошим коллектором", "test": "", "comment": "Без испытаний, сразу в добычу куст", "ndn_plan": 0.19436619718309864, "ndn_fact": 1.2098591549295776, "ndn_delta_pct": 522.463768115942, "risk_score": 0, "npv_delta": 559.4888620272837}, {"id": 13, "gcos_plan": 0.9, "gcos_fact": 1, "cost_plan": 22.42781509284868, "cost_fact": 22.745950217305417, "cost_delta_pct": 1.4184846947404095, "ngz_plan": 12.182741116751268, "ngz_fact": 13.70558375634518, "ngz_delta_pct": 12.50000000000002, "prod_plan": 1.830985915492958, "prod_fact": 1.830985915492958, "prod_delta_pct": 0, "npv_plan": null, "npv_fact": null, "structure_error": 1, "do": "В", "well": "13", "stage": "Поиск", "gir_ready": "Нет", "start_year": "2027", "heff": "P10>Нэф>P90", "kp": "P10>Кп>P90", "contact_forecast": "<P90", "area": "<P90", "nnt": "P10>ННТ>P90", "sgm": "0.5", "npv_positive": "0.5", "success": "УУ", "effectiveness": "0", "deposition": "ДЕЛЬТА", "heff_method_1": "Прогноз СРР", "heff_method_2": "Комплексный атрибут", "rb_plan": "ВОРБ", "rb_fact": "ДО", "p10_p90_plan": "2.9", "p10_p90_fact": "", "ngz_class": "Р50", "kpr_eff_plan": "0.8", "kpr_nnt_plan": "", "kpr_nnt_fact": "-", "driver": "Верх юра", "triz": "Традиционный коллектор", "decision": "", "test": "В испытании", "comment": "Недоиспытана в следствии ЗКЦ с нижележащих интервалов", "ndn_plan": 1.830985915492958, "ndn_fact": 1.830985915492958, "ndn_delta_pct": 0.0, "risk_score": 16.41848469474041, "npv_delta": 0}, {"id": 14, "gcos_plan": 0.81, "gcos_fact": 0, "cost_plan": 17.53732159712367, "cost_fact": 16.997234294745162, "cost_delta_pct": -3.079645311785163, "ngz_plan": 6.192893401015229, "ngz_fact": 0.0, "ngz_delta_pct": -100.0, "prod_plan": 0.9619718309859157, "prod_fact": 0, "prod_delta_pct": -100, "npv_plan": 1411.3854832210902, "npv_fact": null, "structure_error": 2.3, "do": "С-М", "well": "14", "stage": "Поиск", "gir_ready": "Нет", "start_year": "", "heff": "Р50", "kp": "-", "contact_forecast": "-", "area": "-", "nnt": "вода", "sgm": "0.5", "npv_positive": "0", "success": "Н", "effectiveness": "0", "deposition": "РУСЛА", "heff_method_1": "Интерполяция", "heff_method_2": "Интерполяция", "rb_plan": "ВОРБ", "rb_fact": "Неуспех ПО", "p10_p90_plan": "25", "p10_p90_fact": "-", "ngz_class": "другой пласт", "kpr_eff_plan": "", "kpr_nnt_plan": "", "kpr_nnt_fact": "", "driver": "Верх юра", "triz": "Традиционный коллектор", "decision": "ярко выраженная аномалия в виде речного русла", "test": "Неуспех", "comment": "", "ndn_plan": 0.9619718309859157, "ndn_fact": 0.0, "ndn_delta_pct": -100.0, "risk_score": 215.0, "npv_delta": -1411.3854832210902}, {"id": 15, "gcos_plan": 1, "gcos_fact": 1, "cost_plan": 21.179770841564604, "cost_fact": 20.77198735677598, "cost_delta_pct": -1.9253441778905465, "ngz_plan": 14.720812182741117, "ngz_fact": 14.720812182741117, "ngz_delta_pct": null, "prod_plan": 1.268323943661972, "prod_fact": 1.2032816901408452, "prod_delta_pct": -5.12820512820513, "npv_plan": 1517.296955045185, "npv_fact": 2183.8485005468256, "structure_error": 1.9, "do": "С-М", "well": "15", "stage": "Разведка", "gir_ready": "Да", "start_year": "2026", "heff": "P50>Нэф>P90", "kp": "P10>Кп>P90", "contact_forecast": "Р10-Р90", "area": "Р50", "nnt": "<P90", "sgm": "1", "npv_positive": "1", "success": "У", "effectiveness": "1", "deposition": "П-М ОБСТАНОВКИ", "heff_method_1": "Русла+ГСР", "heff_method_2": "Русла+ГСР", "rb_plan": "ВОРБ", "rb_fact": "ДО", "p10_p90_plan": "1.7-3.5", "p10_p90_fact": "-", "ngz_class": "Р90", "kpr_eff_plan": "5.6", "kpr_nnt_plan": "28", "kpr_nnt_fact": "42", "driver": "Тюменка", "triz": "ТРИЗ", "decision": "перевод в промыш категорию", "test": "+", "comment": "", "ndn_plan": 1.268323943661972, "ndn_fact": 1.2032816901408452, "ndn_delta_pct": -5.12820512820513, "risk_score": 5.12820512820513, "npv_delta": 666.5515455016405}, {"id": 16, "gcos_plan": 0.87, "gcos_fact": 1, "cost_plan": 12.74239431054919, "cost_fact": 8.530975898854209, "cost_delta_pct": -33.05044804812254, "ngz_plan": 18.78172588832487, "ngz_fact": 21.927903321394542, "ngz_delta_pct": 16.751269035533113, "prod_plan": 2.9253521126760567, "prod_fact": 1.352112676056338, "prod_delta_pct": -53.779489648531545, "npv_plan": 2838.8879295458473, "npv_fact": 5567.259540666552, "structure_error": 2, "do": "С-М", "well": "16", "stage": "Поиск", "gir_ready": "Да", "start_year": "2026", "heff": "P10>Нэф>P50", "kp": "P10>Кп>P90", "contact_forecast": "", "area": "", "nnt": ">Р10", "sgm": "-", "npv_positive": "1", "success": "У", "effectiveness": "1", "deposition": "П-О КАНАЛЫ", "heff_method_1": "RMS", "heff_method_2": "от Ноб в руслах, вне русел - от RMS", "rb_plan": "ВОРБ", "rb_fact": "-", "p10_p90_plan": "2.7", "p10_p90_fact": "-", "ngz_class": "-", "kpr_eff_plan": "8.5", "kpr_nnt_plan": "94", "kpr_nnt_fact": "17", "driver": "Тюменка", "triz": "ТРИЗ", "decision": "русло по данным 3Д СРР", "test": "+", "comment": "", "ndn_plan": 2.9253521126760567, "ndn_fact": 1.352112676056338, "ndn_delta_pct": -53.779489648531545, "risk_score": 53.779489648531545, "npv_delta": 2728.371611120705}, {"id": 17, "gcos_plan": 1, "gcos_fact": 1, "cost_plan": 3.476886606084552, "cost_fact": 3.1394705649940735, "cost_delta_pct": -9.70454545454546, "ngz_plan": 2.446700507614213, "ngz_fact": 5.106598984771574, "ngz_delta_pct": 108.71369294605809, "prod_plan": 0.6070422535211268, "prod_fact": 1.8647887323943664, "prod_delta_pct": 207.19257540603246, "npv_plan": 769.1245035399759, "npv_fact": 934.2082541875325, "structure_error": 1, "do": "С-М", "well": "17", "stage": "Разведка", "gir_ready": "Да", "start_year": "2026", "heff": "P10>Нэф>P50", "kp": "P10>Кп>P90", "contact_forecast": "Р10-Р90", "area": "Р10", "nnt": "Р50", "sgm": "1", "npv_positive": "1", "success": "БУ", "effectiveness": "1", "deposition": "П-О РАВНИНА", "heff_method_1": "Интерполяция", "heff_method_2": "Интерполяция", "rb_plan": "ДО", "rb_fact": "ДО", "p10_p90_plan": "", "p10_p90_fact": "-", "ngz_class": "+100% от Р50_пл", "kpr_eff_plan": "2.7", "kpr_nnt_plan": "11", "kpr_nnt_fact": "17", "driver": "Верх юра", "triz": "Традиционный коллектор", "decision": "", "test": "+", "comment": "", "ndn_plan": 0.6070422535211268, "ndn_fact": 1.8647887323943664, "ndn_delta_pct": 207.19257540603246, "risk_score": 0, "npv_delta": 165.0837506475566}, {"id": 18, "gcos_plan": 1, "gcos_fact": 1, "cost_plan": 3.7139470564994075, "cost_fact": 4.425128407743975, "cost_delta_pct": 19.148936170212778, "ngz_plan": 3.2614213197969546, "ngz_fact": 2.6878172588832485, "ngz_delta_pct": -17.587548638132308, "prod_plan": 1.117043661971831, "prod_fact": 0, "prod_delta_pct": null, "npv_plan": 245.78368733091582, "npv_fact": null, "structure_error": 2, "do": "С-М", "well": "18", "stage": "Разведка", "gir_ready": "Нет", "start_year": "", "heff": ">Р10", "kp": "P10>Кп>P90", "contact_forecast": "Р50", "area": "Р50", "nnt": "P10>ННТ>P90", "sgm": "0.5", "npv_positive": "0", "success": "УУ", "effectiveness": "0", "deposition": "П-М ОБСТАНОВКИ", "heff_method_1": "Интерполяция", "heff_method_2": "Интерполяция", "rb_plan": "ДО", "rb_fact": "ДО", "p10_p90_plan": "", "p10_p90_fact": "-", "ngz_class": "-18% от Р50_пл", "kpr_eff_plan": "4.2", "kpr_nnt_plan": "3", "kpr_nnt_fact": "0.64", "driver": "Тюменка", "triz": "ТРИЗ", "decision": "Скв. данные, граница съемки 3Д СРР, невозможно проследить русло", "test": "+", "comment": "План - пласт Ю2+Ю3, факт - Ю2", "ndn_plan": 1.117043661971831, "ndn_fact": 0.0, "ndn_delta_pct": null, "risk_score": 51.73648480834508, "npv_delta": -245.78368733091582}, {"id": 19, "gcos_plan": 1, "gcos_fact": 1, "cost_plan": 3.476886606084552, "cost_fact": 3.0829711576451997, "cost_delta_pct": -11.329545454545457, "ngz_plan": 3.5812182741116754, "ngz_fact": 12.230964467005077, "ngz_delta_pct": 241.53082919914954, "prod_plan": 0.695774647887324, "prod_fact": 2.054929577464789, "prod_delta_pct": 195.34412955465586, "npv_plan": 2838.8879295458473, "npv_fact": 5567.259540666552, "structure_error": 0.4, "do": "С-М", "well": "19", "stage": "Разведка", "gir_ready": "Да", "start_year": "2026", "heff": "P10>Нэф>P50", "kp": "P10>Кп>P90", "contact_forecast": "Р50", "area": "Р50", "nnt": "Р10", "sgm": "1", "npv_positive": "1", "success": "БУ", "effectiveness": "1", "deposition": "РУСЛА", "heff_method_1": "RMS", "heff_method_2": "2 разных зависимости от Ноб: в руслах, вне русел", "rb_plan": "ДО", "rb_fact": "ДО", "p10_p90_plan": "", "p10_p90_fact": "-", "ngz_class": "+240% от Р50_пл", "kpr_eff_plan": "5", "kpr_nnt_plan": "102", "kpr_nnt_fact": "16", "driver": "Тюменка", "triz": "ТРИЗ", "decision": "", "test": "+", "comment": "", "ndn_plan": 0.695774647887324, "ndn_fact": 2.054929577464789, "ndn_delta_pct": 195.34412955465586, "risk_score": 0, "npv_delta": 2728.371611120705}, {"id": 20, "gcos_plan": 1, "gcos_fact": 1, "cost_plan": null, "cost_fact": 12.13314895298301, "cost_delta_pct": 100.0, "ngz_plan": 7.6142131979695495, "ngz_fact": 7.614213197969543, "ngz_delta_pct": null, "prod_plan": 0.6281690140845071, "prod_fact": 0.8173169014084508, "prod_delta_pct": 30.11098654708521, "npv_plan": null, "npv_fact": 1078.3399528003224, "structure_error": 0.73, "do": "С-М", "well": "20", "stage": "Разведка", "gir_ready": "Да", "start_year": "2026", "heff": "<P90", "kp": "P10>Кп>P90", "contact_forecast": "Р50", "area": "", "nnt": "", "sgm": "0.5", "npv_positive": "1", "success": "У", "effectiveness": "1", "deposition": "ДЕЛЬТОВАЯ РАВНИНА", "heff_method_1": "RMS", "heff_method_2": "RMS", "rb_plan": "ДО", "rb_fact": "ДО", "p10_p90_plan": "", "p10_p90_fact": "-", "ngz_class": "-74% от Р50_пл", "kpr_eff_plan": "1", "kpr_nnt_plan": "10", "kpr_nnt_fact": "2", "driver": "Тюменка", "triz": "ТРИЗ", "decision": "", "test": "В испытании.", "comment": "Не подтверждение ВНК в Ю1 (<Р90)", "ndn_plan": 0.6281690140845071, "ndn_fact": 0.8173169014084508, "ndn_delta_pct": 30.11098654708521, "risk_score": 100.0, "npv_delta": 1078.3399528003224}, {"id": 21, "gcos_plan": 1, "gcos_fact": 1, "cost_plan": 33.18846305807981, "cost_fact": 34.39030002449625, "cost_delta_pct": 3.6212492404761925, "ngz_plan": 69.03553299492386, "ngz_fact": 62.944162436548226, "ngz_delta_pct": -8.8235294117647, "prod_plan": 1.6901408450704227, "prod_fact": 1.4084507042253522, "prod_delta_pct": -16.666666666666668, "npv_plan": 987.0488689345536, "npv_fact": null, "structure_error": 0.1, "do": "С", "well": "21", "stage": "Разведка", "gir_ready": "В испытании", "start_year": "2028", "heff": "Р50", "kp": "P10>Кп>P90", "contact_forecast": "P90", "area": "P10>S>P50", "nnt": "Р50", "sgm": "1", "npv_positive": "-", "success": "УУ", "effectiveness": "-", "deposition": "РУСЛА", "heff_method_1": "RMS", "heff_method_2": "RMS", "rb_plan": "ВОРБ", "rb_fact": "ДО", "p10_p90_plan": "3.1", "p10_p90_fact": "-", "ngz_class": "Р90-Р50", "kpr_eff_plan": "", "kpr_nnt_plan": "", "kpr_nnt_fact": "-", "driver": "Тюменка", "triz": "ТРИЗ", "decision": "Заложение скважин в русла по RGB", "test": "В испытании.", "comment": "", "ndn_plan": 1.6901408450704227, "ndn_fact": 1.4084507042253522, "ndn_delta_pct": -16.666666666666668, "risk_score": 44.111445318907556, "npv_delta": -987.0488689345536}, {"id": 22, "gcos_plan": 0.94, "gcos_fact": 1, "cost_plan": 10.99960489924931, "cost_fact": 12.435289436521257, "cost_delta_pct": 13.0521464218222, "ngz_plan": 18.225888324873097, "ngz_fact": 22.33502538071066, "ngz_delta_pct": 22.54560646149562, "prod_plan": 2.394366197183099, "prod_fact": 1.9746478873239437, "prod_delta_pct": -17.529411764705895, "npv_plan": 1417.1415414724, "npv_fact": null, "structure_error": 0.5, "do": "С", "well": "22", "stage": "Поиск", "gir_ready": "Да", "start_year": "2025", "heff": "P10>Нэф>P50", "kp": "P10>Кп>P90", "contact_forecast": "Р10-Р90", "area": "P50>S>P90", "nnt": ">P10", "sgm": "1", "npv_positive": "1", "success": "БУ", "effectiveness": "1", "deposition": "ДЕЛЬТА", "heff_method_1": "Vp/Vs", "heff_method_2": "Vp/Vs", "rb_plan": "ВОРБ", "rb_fact": "ДО", "p10_p90_plan": "5.1", "p10_p90_fact": "-", "ngz_class": "Р90-Р50", "kpr_eff_plan": "17", "kpr_nnt_plan": "133", "kpr_nnt_fact": "467", "driver": "Неоком", "triz": "Традиционный коллектор", "decision": "", "test": "+", "comment": "", "ndn_plan": 2.394366197183099, "ndn_fact": 1.9746478873239437, "ndn_delta_pct": -17.529411764705895, "risk_score": 30.581558186528095, "npv_delta": -1417.1415414724}, {"id": 23, "gcos_plan": 0.45, "gcos_fact": 1, "cost_plan": 14.302647175029634, "cost_fact": 16.284863233504545, "cost_delta_pct": 13.859085204419891, "ngz_plan": 13.70558375634518, "ngz_fact": 7.614213197969543, "ngz_delta_pct": -44.44444444444445, "prod_plan": 0.4225352112676057, "prod_fact": 0.8859154929577465, "prod_delta_pct": 109.66666666666664, "npv_plan": 569.8497668796409, "npv_fact": null, "structure_error": 0.2, "do": "С", "well": "23", "stage": "Поиск", "gir_ready": "Да", "start_year": "2026", "heff": "P90", "kp": "P10>Кп>P90", "contact_forecast": "Р50", "area": "P50>S>P90", "nnt": "P10>ННТ>P50", "sgm": "1", "npv_positive": "1", "success": "БУ", "effectiveness": "1", "deposition": "МЕАНДР ОТЛ-Я", "heff_method_1": "Vp/Vs", "heff_method_2": "Vp/Vs", "rb_plan": "ВОРБ", "rb_fact": "ДО", "p10_p90_plan": "7.6", "p10_p90_fact": "-", "ngz_class": "Р10-Р50", "kpr_eff_plan": "16.5", "kpr_nnt_plan": "152", "kpr_nnt_fact": "229", "driver": "Неоком", "triz": "Традиционный коллектор", "decision": "Vp/Vs", "test": "+", "comment": "", "ndn_plan": 0.4225352112676057, "ndn_fact": 0.8859154929577465, "ndn_delta_pct": 109.66666666666664, "risk_score": 58.30352964886434, "npv_delta": -569.8497668796409}, {"id": 24, "gcos_plan": 0.64, "gcos_fact": 1, "cost_plan": 7.178980640063216, "cost_fact": 7.574212475701304, "cost_delta_pct": 5.505403280132096, "ngz_plan": 8.629441624365482, "ngz_fact": 8.629441624365482, "ngz_delta_pct": 0.0, "prod_plan": 0.7605633802816902, "prod_fact": 0.35211267605633806, "prod_delta_pct": -53.70370370370371, "npv_plan": 214.12536694871355, "npv_fact": null, "structure_error": 1.83, "do": "С", "well": "24", "stage": "Поиск", "gir_ready": "Нет", "start_year": "", "heff": "P10>Нэф>P50", "kp": "P10>Кп>P90", "contact_forecast": "Р50", "area": "Р10-Р90", "nnt": "Р90", "sgm": "1", "npv_positive": "0", "success": "У", "effectiveness": "0", "deposition": "КОНУС ВЫНОСА", "heff_method_1": "RMS", "heff_method_2": "RMS", "rb_plan": "ВОРБ", "rb_fact": "ДО", "p10_p90_plan": "-", "p10_p90_fact": "-", "ngz_class": "-", "kpr_eff_plan": "0.35", "kpr_nnt_plan": "3.48", "kpr_nnt_fact": "1.92", "driver": "Ач", "triz": "ТРИЗ", "decision": "RMS", "test": "Необходим РИР.", "comment": "", "ndn_plan": 0.7605633802816902, "ndn_fact": 0.35211267605633806, "ndn_delta_pct": -53.70370370370371, "risk_score": 74.2091069838358, "npv_delta": -214.12536694871355}, {"id": 25, "gcos_plan": 1, "gcos_fact": 1, "cost_plan": 18.79494271039115, "cost_fact": 22.172415532595814, "cost_delta_pct": 17.97011501576624, "ngz_plan": 44.67005076142132, "ngz_fact": 45.93908629441625, "ngz_delta_pct": 2.840909090909098, "prod_plan": 1.5492957746478875, "prod_fact": 0.5633802816901409, "prod_delta_pct": -63.63636363636363, "npv_plan": 391.41196108904626, "npv_fact": null, "structure_error": 0.2, "do": "С", "well": "25", "stage": "Разведка", "gir_ready": "Нет", "start_year": "2028", "heff": "P10>Нэф>P90", "kp": "P10>Кп>P90", "contact_forecast": "Р10", "area": "Р10", "nnt": ">P10", "sgm": "1", "npv_positive": "0", "success": "У", "effectiveness": "0", "deposition": "РУСЛА", "heff_method_1": "RMS", "heff_method_2": "RMS", "rb_plan": "ВОРБ", "rb_fact": "ДО", "p10_p90_plan": "3.7", "p10_p90_fact": "-", "ngz_class": "Р10-Р50", "kpr_eff_plan": "0.31", "kpr_nnt_plan": "0.86", "kpr_nnt_fact": "0.26", "driver": "Тюменка", "triz": "ТРИЗ", "decision": "Заложение скважин в русла по RGB", "test": "+", "comment": "Не подтвердились целевые дебиты", "ndn_plan": 1.5492957746478875, "ndn_fact": 0.5633802816901409, "ndn_delta_pct": -63.63636363636363, "risk_score": 96.60647865212988, "npv_delta": -391.41196108904626}, {"id": 26, "gcos_plan": 1, "gcos_fact": 1, "cost_plan": 16.819438956934018, "cost_fact": 17.366886769261164, "cost_delta_pct": 3.254851804087401, "ngz_plan": 59.64467005076142, "ngz_fact": 43.172588832487314, "ngz_delta_pct": -27.61702127659574, "prod_plan": 3.098591549295775, "prod_fact": 0.9859154929577465, "prod_delta_pct": -68.18181818181819, "npv_plan": 874.1150060438612, "npv_fact": null, "structure_error": 1, "do": "С", "well": "26", "stage": "Разведка", "gir_ready": "Нет", "start_year": "2028", "heff": "P10>Нэф>P50", "kp": "P10>Кп>P90", "contact_forecast": "P90", "area": "<P90", "nnt": "P10>ННТ>P50", "sgm": "0.5", "npv_positive": "0", "success": "У", "effectiveness": "0", "deposition": "РУСЛА", "heff_method_1": "RMS", "heff_method_2": "RMS", "rb_plan": "ВОРБ", "rb_fact": "ДО", "p10_p90_plan": "4.5", "p10_p90_fact": "-", "ngz_class": "Р90-Р50", "kpr_eff_plan": "0.3", "kpr_nnt_plan": "0.86", "kpr_nnt_fact": "0.14", "driver": "Тюменка", "triz": "ТРИЗ", "decision": "Заложение скважин в русла по RGB", "test": "+", "comment": "Не подтвердились целевые дебиты", "ndn_plan": 3.098591549295775, "ndn_fact": 0.9859154929577465, "ndn_delta_pct": -68.18181818181819, "risk_score": 114.05369126250133, "npv_delta": -874.1150060438612}, {"id": 27, "gcos_plan": 0.95, "gcos_fact": 1, "cost_plan": 5.800592256025287, "cost_fact": 6.200526140655868, "cost_delta_pct": 6.894707763938332, "ngz_plan": 4.6700507614213205, "ngz_fact": 7.614213197969543, "ngz_delta_pct": 63.04347826086955, "prod_plan": 0.34366197183098596, "prod_fact": 0.26760563380281693, "prod_delta_pct": -22.131147540983605, "npv_plan": 67.80636620042596, "npv_fact": null, "structure_error": 1, "do": "С", "well": "27", "stage": "Поиск", "gir_ready": "Нет", "start_year": "", "heff": "P10>Нэф>P50", "kp": "P10>Кп>P90", "contact_forecast": "Р50-Р90", "area": "Р10", "nnt": "Р10", "sgm": "1", "npv_positive": "0", "success": "У", "effectiveness": "0", "deposition": "РУСЛА", "heff_method_1": "RMS", "heff_method_2": "RMS", "rb_plan": "ДО", "rb_fact": "ДО", "p10_p90_plan": "-", "p10_p90_fact": "-", "ngz_class": "+67% от Р50_пл", "kpr_eff_plan": "", "kpr_nnt_plan": "-", "kpr_nnt_fact": "-", "driver": "Тюменка", "triz": "ТРИЗ", "decision": "", "test": "+", "comment": "Актуализация БК", "ndn_plan": 0.34366197183098596, "ndn_fact": 0.26760563380281693, "ndn_delta_pct": -22.131147540983605, "risk_score": 44.02585530492193, "npv_delta": -67.80636620042596}, {"id": 28, "gcos_plan": 0.66, "gcos_fact": 1, "cost_plan": 100.00000000000001, "cost_fact": 92.09798498617148, "cost_delta_pct": -7.902015013828531, "ngz_plan": 50.0, "ngz_fact": null, "ngz_delta_pct": null, "prod_plan": 20, "prod_fact": 8.028169014084508, "prod_delta_pct": null, "npv_plan": 19999.863474410296, "npv_fact": null, "structure_error": 1, "do": "МР", "well": "28", "stage": "Поиск", "gir_ready": "Нет", "start_year": "", "heff": "Р50", "kp": "P10>Кп>P90", "contact_forecast": "перекорреляция пластов", "area": "", "nnt": "", "sgm": "0", "npv_positive": "0.5", "success": "У", "effectiveness": "0", "deposition": "КОНУС ВЫНОСА", "heff_method_1": "АИ", "heff_method_2": "АИ", "rb_plan": "ВОРБ", "rb_fact": "ВОРБ", "p10_p90_plan": "-", "p10_p90_fact": "", "ngz_class": "-", "kpr_eff_plan": "0.3", "kpr_nnt_plan": "7.1", "kpr_nnt_fact": "1.1", "driver": "Ач", "triz": "ТРИЗ", "decision": "Максимальные сумм эффективные толщины по Ач пластам (АИ)", "test": "+", "comment": "Актуализация БК", "ndn_plan": 20.0, "ndn_fact": 8.028169014084508, "ndn_delta_pct": null, "risk_score": 15, "npv_delta": -19999.863474410296}, {"id": 29, "gcos_plan": 0.69, "gcos_fact": 1, "cost_plan": 46.75112225121331, "cost_fact": 57.3686290003951, "cost_delta_pct": 22.71069920445865, "ngz_plan": 100.76142131979697, "ngz_fact": 59.390862944162436, "ngz_delta_pct": -41.05793450881613, "prod_plan": 7.323943661971832, "prod_fact": 0, "prod_delta_pct": -100, "npv_plan": 263.6274679099753, "npv_fact": 764.4045357739021, "structure_error": 2.1, "do": "МС", "well": "29", "stage": "Поиск", "gir_ready": "Нет", "start_year": "2030", "heff": "другой пласт (СГ1-2)", "kp": "-", "contact_forecast": "-", "area": "-", "nnt": "-", "sgm": "0", "npv_positive": "0", "success": "УУ", "effectiveness": "0", "deposition": "КОНУС + М-М БАРЫ", "heff_method_1": "АИ", "heff_method_2": "АИ", "rb_plan": "ВОРБ", "rb_fact": "ВОРБ", "p10_p90_plan": "6", "p10_p90_fact": "6.6", "ngz_class": "другой пласт", "kpr_eff_plan": "", "kpr_nnt_plan": "-", "kpr_nnt_fact": "-", "driver": "Неоком+Ач", "triz": "Традиционный коллектор", "decision": "АИ", "test": "+", "comment": "Не подверждены Ач и НХ (плановые пласты),коллектора нет, открыты НГЗ в СГ1-2. Выполнена сейсмич инверсия, но отсутствовали данные для калибровки в этих интервалах", "ndn_plan": 7.323943661971832, "ndn_fact": 0.0, "ndn_delta_pct": -100.0, "risk_score": 178.76863371327477, "npv_delta": 500.77706786392685}, {"id": 30, "gcos_plan": 0.76, "gcos_fact": 1, "cost_plan": 29.39549585144212, "cost_fact": 67.09844954762585, "cost_delta_pct": 128.26098898527016, "ngz_plan": 82.99492385786803, "ngz_fact": 82.23350253807106, "ngz_delta_pct": -0.9174311926605646, "prod_plan": 0.7929577464788732, "prod_fact": 1.1464788732394366, "prod_delta_pct": 44.58259325044406, "npv_plan": 225.63748345133254, "npv_fact": 1022.2759454325678, "structure_error": 1, "do": "МС", "well": "30", "stage": "Поиск", "gir_ready": "Нет", "start_year": "2032", "heff": "Р90", "kp": "Р90", "contact_forecast": "Р10", "area": ">Р10", "nnt": "P50>ННТ>P90", "sgm": "0.5", "npv_positive": "1", "success": "У", "effectiveness": "1", "deposition": "КОНУС ВЫНОСА", "heff_method_1": "АИ и Vp/Vs", "heff_method_2": "АИ и Vp/Vs", "rb_plan": "ВОРБ", "rb_fact": "ДО", "p10_p90_plan": "20", "p10_p90_fact": "-", "ngz_class": "Р10-Р50", "kpr_eff_plan": "0.16", "kpr_nnt_plan": "4.8", "kpr_nnt_fact": "4.5", "driver": "Ач", "triz": "ТРИЗ", "decision": "Сейсмическая инверсия", "test": "+", "comment": "! Толщины подтверждены маленькие, а запасы после переоценки выросли!", "ndn_plan": 0.7929577464788732, "ndn_fact": 1.1464788732394366, "ndn_delta_pct": 44.58259325044406, "risk_score": 144.17842017793072, "npv_delta": 796.6384619812353}], "options": {"do": ["В", "МР", "МС", "Н", "С", "С-М", "Х"], "deposition": ["ДЕЛЬТА", "ДЕЛЬТОВАЯ РАВНИНА", "КОНУС + М-М БАРЫ", "КОНУС ВЫНОСА", "М-М БАРЫ", "МЕАНДР ОТЛ-Я", "П-М ОБСТАНОВКИ", "П-О КАНАЛЫ", "П-О РАВНИНА", "РУСЛА"], "triz": ["ТРИЗ", "Традиционный коллектор"], "stage": ["Поиск", "Разведка"], "gir_ready": ["В испытании", "Да", "Нет", "Частично"], "driver": ["Ач", "Верх юра", "Неоком", "Неоком+Ач", "Тюменка"]}};
-const COLORS={blue:'#1f5fbf',green:'#12805c',amber:'#b46b00',red:'#bd2d2d',purple:'#6d28d9'};
-const state={metric:'ngz_fact',group:'do',sortKey:'ngz_fact',sortDir:-1};
-function n(v){const x=Number(v);return Number.isFinite(x)?x:0}function fmt(v,d=1){return n(v).toLocaleString('ru-RU',{maximumFractionDigits:d,minimumFractionDigits:d})}function pct(v){return fmt(v,1)+'%'}function esc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}function cls(v,pos=true){const x=n(v); if(Math.abs(x)<.05)return ''; return pos?(x>=0?'goodtxt':'badtxt'):(x>0?'badtxt':'goodtxt')}
-function fill(id,vals,label){const el=document.getElementById(id);el.innerHTML='<option value="">'+esc(label)+'</option>'+[...new Set(vals||[])].filter(x=>x!==null&&x!==undefined&&x!=='').sort((a,b)=>String(a).localeCompare(String(b),'ru')).map(v=>'<option value="'+esc(v)+'">'+esc(v)+'</option>').join('')}
-function rows(){const d=document.getElementById('fDo').value, dep=document.getElementById('fDep').value, tr=document.getElementById('fTriz').value, st=document.getElementById('fStage').value, gir=document.getElementById('fGir').value, q=document.getElementById('fSearch').value.trim().toLowerCase();return DATA.records.filter(r=>{if(d&&String(r.do)!==d)return false;if(dep&&String(r.deposition)!==dep)return false;if(tr&&String(r.triz)!==tr)return false;if(st&&String(r.stage)!==st)return false;if(gir&&String(r.gir_ready)!==gir)return false;if(q){const hay=[r.well,r.decision,r.comment,r.deposition,r.driver,r.test,r.success].join(' ').toLowerCase();if(!hay.includes(q))return false}return true})}
-function sum(a,k){return a.reduce((s,r)=>s+n(r[k]),0)}function avg(a,k){return a.length?sum(a,k)/a.length:0}function top(a,k,dir=-1,lim=10){return [...a].sort((x,y)=>dir*(n(y[k])-n(x[k]))).slice(0,lim)}function groups(a,k){const m=new Map();a.forEach(r=>{const label=r[k]||'Не указано';if(!m.has(label))m.set(label,[]);m.get(label).push(r)});return [...m].map(([label,items])=>({label,items,count:items.length,ngz:sum(items,'ngz_fact'),ndn:sum(items,'ndn_fact'),risk:avg(items,'risk_score'),ngzDelta:avg(items,'ngz_delta_pct'),ndnDelta:avg(items,'ndn_delta_pct')})).sort((x,y)=>y.ngz-x.ngz)}
-function prep(id){const c=document.getElementById(id), w=c.clientWidth||700, h=c.clientHeight||320;c.width=w;c.height=h;const ctx=c.getContext('2d');ctx.clearRect(0,0,w,h);ctx.font='12px Arial';return{c,ctx,w,h}}
-function drawNoData(id,msg='Нет данных'){const {ctx,w,h}=prep(id);ctx.fillStyle='#64748b';ctx.fillText(msg,w/2-40,h/2)}function renderKpis(r){const ready=r.filter(x=>x.gir_ready==='Да').length, prob=r.filter(x=>n(x.risk_score)>55).length;document.getElementById('kpis').innerHTML=[['ПРБ',fmt(r.length,0),'объектов'],['Готовность к ГИР',r.length?pct(ready/r.length*100):'0%','доля'],['НГЗ факт',fmt(sum(r,'ngz_fact'),1),'млн т ЖУВ'],['НДН факт',fmt(sum(r,'ndn_fact'),2),'млн т'],['NPV факт',fmt(sum(r,'npv_fact'),0),'млн руб.'],['Проблемные ПРБ',fmt(prob,0),'риск > 55']].map(x=>`<div class="kpi"><span>${x[0]}</span><b>${x[1]}</b><small>${x[2]}</small></div>`).join('')}
-function renderInsights(r){const bestN=top(r,'ngz_fact',-1,1)[0],bestD=top(r,'ndn_fact',-1,1)[0],bad=top(r,'risk_score',-1,1)[0],gr=groups(r,'deposition')[0];document.getElementById('insights').innerHTML=[`<div class="insight good"><b>Главный вклад в НГЗ</b><p>${bestN?'ПРБ '+esc(bestN.well)+': '+fmt(bestN.ngz_fact,1)+' млн т ЖУВ, ДО '+esc(bestN.do):'Нет данных'}</p></div>`,`<div class="insight good"><b>Главный вклад в НДН</b><p>${bestD?'ПРБ '+esc(bestD.well)+': '+fmt(bestD.ndn_fact,2)+' млн т, '+esc(bestD.deposition):'Нет данных'}</p></div>`,`<div class="insight bad"><b>Главная проблема</b><p>${bad?'ПРБ '+esc(bad.well)+': риск '+fmt(bad.risk_score,1)+', ∆стоимость '+pct(bad.cost_delta_pct)+', ∆НГЗ '+pct(bad.ngz_delta_pct)+', ∆НДН '+pct(bad.ndn_delta_pct):'Нет данных'}</p></div>`,`<div class="insight warn"><b>Фокус по отложениям</b><p>${gr?'Максимальный НГЗ в группе «'+esc(gr.label)+'»: '+fmt(gr.ngz,1)+' млн т':'Нет данных'}</p></div>`,`<div class="insight"><b>ГИР-фокус</b><p>${r.filter(x=>x.gir_ready!=='Да').length} объектов не в статусе «Да».</p></div>`,`<div class="insight"><b>ТРИЗ</b><p>${groups(r,'triz').map(g=>esc(g.label)+': НГЗ '+fmt(g.ngz,1)+', НДН '+fmt(g.ndn,2)).join('; ')||'Нет данных'}</p></div>`].join('')}
-function drawRank(r){if(!r.length)return drawNoData('rank');const key=state.metric,t={ngz_fact:'НГЗ факт',ndn_fact:'НДН факт',ngz_delta_pct:'∆ НГЗ, %',ndn_delta_pct:'∆ НДН, %',risk_score:'Индекс риска'};const {ctx,w}=prep('rank'),items=top(r,key,-1,10),mx=Math.max(...items.map(x=>Math.abs(n(x[key]))),1);ctx.fillStyle='#334155';ctx.fillText(t[key],12,18);items.forEach((it,i)=>{const y=38+i*26,val=n(it[key]),bw=Math.max(2,Math.abs(val)/mx*(w-170));ctx.fillStyle=key==='risk_score'?COLORS.red:(val<0?COLORS.amber:(key.includes('ndn')?COLORS.green:COLORS.blue));ctx.fillRect(105,y,bw,15);ctx.fillStyle='#111827';ctx.fillText('ПРБ '+it.well,12,y+12);ctx.fillText(key.includes('pct')?pct(val):fmt(val,key==='ndn_fact'?2:1),112+bw,y+12)})}
-function drawGrouped(r){if(!r.length)return drawNoData('grouped');const {ctx,w,h}=prep('grouped'),gs=groups(r,state.group).slice(0,8),mx=Math.max(...gs.map(g=>Math.max(g.ngz,g.ndn*10)),1),base=h-46;ctx.fillStyle='#334155';ctx.fillText('НГЗ факт + НДН факт ×10 для масштаба',12,18);gs.forEach((g,i)=>{const x=40+i*((w-70)/Math.max(gs.length,1)),bw=Math.max(8,Math.min(24,(w-90)/gs.length/3));const h1=g.ngz/mx*(h-90),h2=g.ndn*10/mx*(h-90);ctx.fillStyle=COLORS.blue;ctx.fillRect(x,base-h1,bw,h1);ctx.fillStyle=COLORS.green;ctx.fillRect(x+bw+4,base-h2,bw,h2);ctx.save();ctx.translate(x-8,base+8);ctx.rotate(-Math.PI/5);ctx.fillStyle='#334155';ctx.fillText(String(g.label).slice(0,18),0,0);ctx.restore()})}
-function drawScatter(r){if(!r.length)return drawNoData('scatter');const {c,ctx,w,h}=prep('scatter'),pad=42;ctx.strokeStyle='#dbe1ea';ctx.beginPath();ctx.moveTo(pad,h-pad);ctx.lineTo(w-pad,h-pad);ctx.lineTo(w-pad,pad);ctx.stroke();const maxX=Math.max(...r.map(x=>n(x.ndn_fact)),1),maxY=Math.max(...r.map(x=>n(x.ngz_fact)),1),maxN=Math.max(...r.map(x=>n(x.npv_fact)),1),pts=[];ctx.fillStyle='#334155';ctx.fillText('X: НДН факт, Y: НГЗ факт, размер: NPV факт',12,18);r.forEach(row=>{const x=pad+n(row.ndn_fact)/maxX*(w-2*pad),y=h-pad-n(row.ngz_fact)/maxY*(h-2*pad),rad=4+Math.sqrt(Math.max(n(row.npv_fact),0)/maxN)*10;ctx.beginPath();ctx.arc(x,y,rad,0,Math.PI*2);ctx.fillStyle=row.gir_ready==='Да'?COLORS.green:(row.gir_ready==='Нет'?COLORS.red:COLORS.amber);ctx.globalAlpha=.75;ctx.fill();ctx.globalAlpha=1;pts.push({x,y,rad,row})});tip(c,pts,row=>`ПРБ ${esc(row.well)}<br>ДО: ${esc(row.do)}<br>НГЗ: ${fmt(row.ngz_fact,1)}<br>НДН: ${fmt(row.ndn_fact,2)}<br>NPV: ${fmt(row.npv_fact,0)}`)}
-function drawRisk(r){if(!r.length)return drawNoData('risk');const {c,ctx,w,h}=prep('risk'),pad=42;ctx.strokeStyle='#dbe1ea';ctx.beginPath();ctx.moveTo(pad,h-pad);ctx.lineTo(w-pad,h-pad);ctx.lineTo(w-pad,pad);ctx.stroke();const maxX=Math.max(...r.map(x=>Math.max(0,n(x.cost_delta_pct))),1),maxY=Math.max(...r.map(x=>Math.max(0,-n(x.ngz_delta_pct))+Math.max(0,-n(x.ndn_delta_pct))),1),pts=[];ctx.fillStyle='#334155';ctx.fillText('X: перерасход, Y: провал НГЗ+НДН',12,18);r.forEach(row=>{const xv=Math.max(0,n(row.cost_delta_pct)),yv=Math.max(0,-n(row.ngz_delta_pct))+Math.max(0,-n(row.ndn_delta_pct));const x=pad+xv/maxX*(w-2*pad),y=h-pad-yv/maxY*(h-2*pad);ctx.beginPath();ctx.arc(x,y,7,0,Math.PI*2);ctx.fillStyle=n(row.risk_score)>55?COLORS.red:(n(row.risk_score)>25?COLORS.amber:COLORS.green);ctx.fill();pts.push({x,y,rad:9,row})});tip(c,pts,row=>`ПРБ ${esc(row.well)}<br>Риск: ${fmt(row.risk_score,1)}<br>∆стоимость: ${pct(row.cost_delta_pct)}<br>∆НГЗ: ${pct(row.ngz_delta_pct)}<br>∆НДН: ${pct(row.ndn_delta_pct)}`)}
-function tip(c,pts,fn){const t=document.getElementById('tooltip');c.onmousemove=e=>{const r=c.getBoundingClientRect(),x=(e.clientX-r.left)*c.width/r.width,y=(e.clientY-r.top)*c.height/r.height,p=pts.find(p=>Math.hypot(p.x-x,p.y-y)<=p.rad+4);if(p){t.style.display='block';t.style.left=e.clientX+14+'px';t.style.top=e.clientY+14+'px';t.innerHTML=fn(p.row)}else t.style.display='none'};c.onmouseleave=()=>t.style.display='none'}
-function renderHeat(r){const gs=groups(r,'deposition').sort((a,b)=>b.risk-a.risk);document.getElementById('heat').innerHTML=['Тип отложений','ПРБ','НГЗ факт','НДН факт','Средний риск'].map(x=>`<div class="head">${x}</div>`).join('')+gs.map(g=>`<div>${esc(g.label)}</div><div>${g.count}</div><div>${fmt(g.ngz,1)}</div><div>${fmt(g.ndn,2)}</div><div class="${g.risk>55?'risk-hi':g.risk>25?'risk-mid':'risk-ok'}">${fmt(g.risk,1)}</div>`).join('')}
-function renderTable(r){const s=[...r].sort((a,b)=>{const av=a[state.sortKey],bv=b[state.sortKey];if(typeof av==='number'||typeof bv==='number')return(n(av)-n(bv))*state.sortDir;return String(av??'').localeCompare(String(bv??''),'ru')*state.sortDir});document.querySelector('#detail tbody').innerHTML=s.map(x=>`<tr><td>ПРБ ${esc(x.well)}</td><td>${esc(x.do)}</td><td>${esc(x.deposition)}</td><td>${esc(x.triz)}</td><td>${esc(x.gir_ready)}</td><td>${fmt(x.ngz_fact,1)}</td><td class="${cls(x.ngz_delta_pct,true)}">${pct(x.ngz_delta_pct)}</td><td>${fmt(x.ndn_fact,2)}</td><td class="${cls(x.ndn_delta_pct,true)}">${pct(x.ndn_delta_pct)}</td><td class="${cls(x.cost_delta_pct,false)}">${pct(x.cost_delta_pct)}</td><td>${fmt(x.npv_fact,0)}</td><td class="${n(x.risk_score)>55?'badtxt':n(x.risk_score)>25?'risk-mid':'goodtxt'}">${fmt(x.risk_score,1)}</td><td>${esc(x.success)}</td><td>${esc(x.decision)}</td><td>${esc(x.comment)}</td></tr>`).join('')}
-function render(){const r=rows();document.getElementById('status').textContent='Загружено записей: '+DATA.records.length+'. В текущей выборке: '+r.length+'.';renderKpis(r);renderInsights(r);drawScatter(r);drawRank(r);drawGrouped(r);drawRisk(r);renderHeat(r);renderTable(r)}
-function init(){fill('fDo',DATA.options.do,'Все ДО');fill('fDep',DATA.options.deposition,'Все типы');fill('fTriz',DATA.options.triz,'Все');fill('fStage',DATA.options.stage,'Все этапы');fill('fGir',DATA.options.gir_ready,'Любая готовность');['fDo','fDep','fTriz','fStage','fGir','fSearch'].forEach(id=>document.getElementById(id).addEventListener('input',render));document.getElementById('reset').onclick=()=>{['fDo','fDep','fTriz','fStage','fGir','fSearch'].forEach(id=>document.getElementById(id).value='');render()};document.querySelectorAll('#metricTabs button').forEach(b=>b.onclick=()=>{document.querySelectorAll('#metricTabs button').forEach(x=>x.classList.remove('active'));b.classList.add('active');state.metric=b.dataset.metric;render()});document.querySelectorAll('#groupTabs button').forEach(b=>b.onclick=()=>{document.querySelectorAll('#groupTabs button').forEach(x=>x.classList.remove('active'));b.classList.add('active');state.group=b.dataset.group;render()});document.querySelectorAll('th[data-sort]').forEach(th=>th.onclick=()=>{const k=th.dataset.sort;state.sortDir=state.sortKey===k?-state.sortDir:-1;state.sortKey=k;renderTable(rows())});window.addEventListener('resize',render);render()}
-try{init()}catch(e){document.getElementById('status').textContent='Ошибка отображения: '+e.message;console.error(e)}
-</script>
-</body></html>
+  <header>
+    <div class="topline">
+      <div>
+        <h1>Портфель ПРБ: НДН факт, готовность к ГИР и проблемные объекты</h1>
+        <p>Интерактивный срез для главных геологов и ЗГД по ГРР: ДО, типы отложений, ТРИЗ и качество подтверждения.</p>
+      </div>
+      <div class="source">Источник: Проба2.xlsx<br>Обновлено: 10.06.2026 18:37</div>
+    </div>
+  </header>
+  <main>
+    <section class="filters">
+      <div><label for="do">ДО</label><select id="do"></select></div>
+      <div><label for="stage">Этап</label><select id="stage"></select></div>
+      <div class="multi-filter" id="girFilter">
+        <label>ГИР</label>
+        <button type="button" class="multi-toggle" id="girToggle">Любая готовность</button>
+        <div class="multi-menu" id="girMenu"></div>
+      </div>
+      <div><label for="triz">ТРИЗ</label><select id="triz"></select></div>
+      <div><label for="driver">Пласт-драйвер</label><select id="driver"></select></div>
+      <div><label for="search">Поиск</label><input id="search" placeholder="ПРБ, решение, комментарий"></div>
+    </section>
+
+    <section class="kpis" id="kpis"></section>
+
+    <section class="insights" id="insights"></section>
+
+    <section class="panel">
+      <div class="panel-head">
+        <div>
+          <h2>НДН факт: интерактивный срез</h2>
+          <p>Сравнение факта и плана НДН по выбранному управленческому признаку.</p>
+        </div>
+        <div class="slice-controls">
+          <label for="ndnSlice">Срез</label>
+          <select id="ndnSlice">
+            <option value="do">ДО</option>
+            <option value="driver">Пласт-драйвер</option>
+            <option value="triz">ТРИЗ / традиционный коллектор</option>
+            <option value="gir_ready">Готовность к ГИР</option>
+          </select>
+        </div>
+      </div>
+      <canvas id="ndnSliceChart"></canvas>
+      <div class="legend"><span><i style="background:#1261a6"></i>НДН факт</span><span><i style="background:rgba(18,97,166,.22)"></i>НДН план</span></div>
+    </section>
+
+    <section class="grid">
+      <div class="panel">
+        <h2>НДН факт и план по ДО</h2>
+        <canvas id="doNdn"></canvas>
+      </div>
+      <div class="panel">
+        <h2>Готовность передачи в ГИР</h2>
+        <div class="split">
+          <canvas id="girDonut"></canvas>
+          <div id="girSummary"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="grid">
+      <div class="panel">
+        <h2>Проблемные объекты: приоритет разбора</h2>
+        <div class="problem-list" id="problemList"></div>
+      </div>
+      <div class="panel">
+        <h2>НДН факт против стоимости</h2>
+        <canvas id="scatter"></canvas>
+      </div>
+    </section>
+
+    <section class="grid-3">
+      <div class="panel short">
+        <h2>Сравнение по типам отложений</h2>
+        <canvas id="depChart"></canvas>
+      </div>
+      <div class="panel short">
+        <h2>ТРИЗ / традиционный коллектор</h2>
+        <canvas id="trizChart"></canvas>
+      </div>
+      <div class="panel">
+        <h2>Тепловая карта: ДО x статус ГИР</h2>
+        <div class="heatmap" id="heatmap"></div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>Детальная таблица</h2>
+      <div class="table-wrap">
+        <table id="detail">
+          <thead>
+            <tr>
+              <th data-sort="well">ПРБ</th>
+              <th data-sort="do">ДО</th>
+              <th data-sort="stage">Этап</th>
+              <th data-sort="gir_ready">ГИР</th>
+              <th data-sort="ndn_fact">НДН факт</th>
+              <th data-sort="ndn_plan">НДН план</th>
+              <th data-sort="ndn_delta_pct">∆ НДН, %</th>
+              <th data-sort="cost_fact">Стоимость факт</th>
+              <th data-sort="cost_delta_pct">∆ стоимость, %</th>
+              <th data-sort="ngz_fact">НГЗ факт</th>
+              <th data-sort="success">Успешность</th>
+              <th data-sort="deposition">Отложения</th>
+              <th data-sort="driver">Пласт</th>
+              <th data-sort="triz">Тип</th>
+              <th data-sort="risk_score">Риск</th>
+              <th>Решение / комментарий</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+  <script>
+    var LEGACY_DATA = {"records": [{"id": 1, "do": "Х", "well": "1", "stage": "Поиск", "gcos_plan": 1.0, "gcos_fact": 1.0, "cost_plan": 22.06763923622284, "cost_fact": 22.157250098775187, "ngz_plan": 12.314467005076141, "ngz_fact": 18.527918781725887, "ndn_plan": 0.9535211267605636, "ndn_fact": 0.8507042253521128, "ndn_delta_pct": -10.782865583456433, "gir_ready": "Да", "start_year": "2026", "structure_error": 0.05, "heff": ">Р10", "kp": "P10>Кп>P90", "contact_forecast": "Р50", "area": "", "nnt": ">Р10", "sgm": "0.5", "npv_positive": "1", "success": "У", "effectiveness": "1", "deposition": "КОНУС ВЫНОСА", "heff_method_1": "Инверсия", "heff_method_2": "Инверсия, Sum of positive amplitude", "rb_plan": "ВОРБ", "rb_fact": "ВОРБ (а)", "p10_p90_plan": "1.6-2", "p10_p90_fact": "", "ngz_class": "Р50", "kpr_eff_plan": "0.7", "kpr_eff_fact": "", "kpr_eff_delta_pct": null, "kpr_nnt_plan": "", "kpr_nnt_fact": "-", "kpr_nnt_delta_pct": null, "driver": "Ач", "triz": "Традиционный коллектор", "decision": "АИ и Vp/Vs", "test": "В испытании", "comment": "", "cost_delta_pct": 0.4060736247910812, "ngz_delta_pct": 50.45652218718442, "ndn_delta_abs": -0.10281690140845079}, {"id": 2, "do": "Х", "well": "2", "stage": "Поиск", "gcos_plan": 1.0, "gcos_fact": 1.0, "cost_plan": 15.803647379213475, "cost_fact": 15.906756222836826, "ngz_plan": 19.083756345177665, "ngz_fact": 24.274111675126903, "ndn_plan": 0.5295774647887325, "ndn_fact": 0.5584507042253521, "ndn_delta_pct": 5.45212765957446, "gir_ready": "Да", "start_year": "2025", "structure_error": 1.04, "heff": ">Р10", "kp": "P10>Кп>P90", "contact_forecast": "Р50", "area": "P10>S>P50", "nnt": ">Р10", "sgm": "0.5", "npv_positive": "1", "success": "У", "effectiveness": "1", "deposition": "М-М БАРЫ", "heff_method_1": "АИ и Vp/Vs", "heff_method_2": "АИ и Vp/Vs", "rb_plan": "ВОРБ", "rb_fact": "ВОРБ", "p10_p90_plan": "1.4", "p10_p90_fact": "1.4", "ngz_class": ">P10", "kpr_eff_plan": "1.3", "kpr_eff_fact": "", "kpr_eff_delta_pct": null, "kpr_nnt_plan": "", "kpr_nnt_fact": "-", "kpr_nnt_delta_pct": null, "driver": "Неоком", "triz": "Традиционный коллектор", "decision": "АИ и Vp/Vs", "test": "+", "comment": "", "cost_delta_pct": 0.6524370048838879, "ngz_delta_pct": 27.197765660327168, "ndn_delta_abs": 0.02887323943661968}, {"id": 3, "do": "Х", "well": "3", "stage": "Разведка", "gcos_plan": 1.0, "gcos_fact": 1.0, "cost_plan": 28.790623687608928, "cost_fact": 29.74813133866543, "ngz_plan": 100.50761421319795, "ngz_fact": 93.40101522842639, "ndn_plan": 3.098591549295775, "ndn_fact": 2.95774647887324, "ndn_delta_pct": -4.545454545454539, "gir_ready": "Да", "start_year": "2026", "structure_error": 0.94, "heff": "P10>Нэф>P50", "kp": "P10>Кп>P90", "contact_forecast": "Р50", "area": "P10>S>P50", "nnt": "P10>ННТ>P90", "sgm": "1", "npv_positive": "1", "success": "БУ", "effectiveness": "1", "deposition": "КОНУС ВЫНОСА", "heff_method_1": "АИ и Vp/Vs", "heff_method_2": "АИ и Vp/Vs", "rb_plan": "ВОРБ", "rb_fact": "ВОРБ (а)", "p10_p90_plan": "1.8", "p10_p90_fact": "", "ngz_class": "Р50", "kpr_eff_plan": "1.6", "kpr_eff_fact": "", "kpr_eff_delta_pct": null, "kpr_nnt_plan": "", "kpr_nnt_fact": "-", "kpr_nnt_delta_pct": null, "driver": "Ач", "triz": "Традиционный коллектор", "decision": "АИ и Vp/Vs", "test": "В испытании", "comment": "", "cost_delta_pct": 3.3257621003486726, "ngz_delta_pct": -7.07070707070706, "ndn_delta_abs": -0.14084507042253502}, {"id": 4, "do": "Х", "well": "4", "stage": "Поиск", "gcos_plan": 1.0, "gcos_fact": 1.0, "cost_plan": 18.877457557866457, "cost_fact": 18.625361763935206, "ngz_plan": 25.63451776649746, "ngz_fact": 22.33502538071066, "ndn_plan": 1.4084507042253522, "ndn_fact": 1.1267605633802817, "ndn_delta_pct": -20.000000000000004, "gir_ready": "Да", "start_year": "2026", "structure_error": 0.74, "heff": "P10>Нэф>P50", "kp": "P10>Кп>P90", "contact_forecast": "Р10", "area": "", "nnt": ">Р10", "sgm": "1", "npv_positive": "1", "success": "БУ", "effectiveness": "1", "deposition": "КОНУС ВЫНОСА", "heff_method_1": "Инверсия", "heff_method_2": "Инверсия, Sum of positive amplitude", "rb_plan": "ВОРБ", "rb_fact": "ВОРБ (а)", "p10_p90_plan": "4.1", "p10_p90_fact": "", "ngz_class": "Р90-Р50", "kpr_eff_plan": "0.7", "kpr_eff_fact": "", "kpr_eff_delta_pct": null, "kpr_nnt_plan": "", "kpr_nnt_fact": "-", "kpr_nnt_delta_pct": null, "driver": "Ач", "triz": "Традиционный коллектор", "decision": "АИ и Vp/Vs", "test": "В испытании", "comment": "", "cost_delta_pct": -1.3354329795656095, "ngz_delta_pct": -12.871287128712861, "ndn_delta_abs": -0.2816901408450705}, {"id": 5, "do": "Х", "well": "5", "stage": "Разведка", "gcos_plan": 1.0, "gcos_fact": 1.0, "cost_plan": 21.076515196801466, "cost_fact": 20.161407370809957, "ngz_plan": 41.37055837563452, "ngz_fact": 41.37055837563452, "ndn_plan": 1.267605633802817, "ndn_fact": 1.256056338028169, "ndn_delta_pct": -0.9111111111111134, "gir_ready": "Да", "start_year": "2026", "structure_error": 0.1, "heff": "P50>Нэф>P90", "kp": "P10>Кп>P90", "contact_forecast": "Р50", "area": "", "nnt": "", "sgm": "1", "npv_positive": "1", "success": "БУ", "effectiveness": "1", "deposition": "КОНУС + М-М БАРЫ", "heff_method_1": "Инверсия", "heff_method_2": "Инверсия", "rb_plan": "ВОРБ", "rb_fact": "ВОРБ (а)", "p10_p90_plan": "2.1-3.4", "p10_p90_fact": "", "ngz_class": "Р50", "kpr_eff_plan": "1.4", "kpr_eff_fact": "", "kpr_eff_delta_pct": null, "kpr_nnt_plan": "", "kpr_nnt_fact": "-", "kpr_nnt_delta_pct": null, "driver": "Неоком+Ач", "triz": "Традиционный коллектор", "decision": "АИ и Vp/Vs", "test": "В испытании", "comment": "", "cost_delta_pct": -4.341836482201689, "ngz_delta_pct": 0.0, "ndn_delta_abs": -0.011549295774647916}, {"id": 6, "do": "Х", "well": "6", "stage": "Поиск", "gcos_plan": 1.0, "gcos_fact": 1.0, "cost_plan": 9.296483603318848, "cost_fact": 10.001007700908731, "ngz_plan": 6.85279187817259, "ngz_fact": 11.134517766497462, "ndn_plan": 0.057323943661971834, "ndn_fact": 0.057323943661971834, "ndn_delta_pct": 0.0, "gir_ready": "Да", "start_year": "2026", "structure_error": 1.2, "heff": "<P90", "kp": "P10>Кп>P90", "contact_forecast": "<P90", "area": "", "nnt": "", "sgm": "0.5", "npv_positive": "1", "success": "У", "effectiveness": "1", "deposition": "РУСЛА", "heff_method_1": "Прогноз СРР", "heff_method_2": "Прогноз СРР", "rb_plan": "ВОРБ", "rb_fact": "ВОРБ (а)", "p10_p90_plan": "1.9", "p10_p90_fact": "", "ngz_class": "Р50", "kpr_eff_plan": "-", "kpr_eff_fact": "", "kpr_eff_delta_pct": null, "kpr_nnt_plan": "", "kpr_nnt_fact": "-", "kpr_nnt_delta_pct": null, "driver": "Тюменка", "triz": "ТРИЗ", "decision": "ФАЦИИ ПОЯСОВ МЕАНДРИРОВАНИЯ, ПРИУРОЧЕННЫЕ К СТРУКТУРНЫМ ПОДНЯТИЯМ", "test": "В испытании", "comment": "", "cost_delta_pct": 7.578393375946679, "ngz_delta_pct": 62.48148148148145, "ndn_delta_abs": 0.0}, {"id": 7, "do": "Х", "well": "7", "stage": "Поиск", "gcos_plan": 0.8, "gcos_fact": 1.0, "cost_plan": 21.216910312129595, "cost_fact": 18.639745292374556, "ngz_plan": 16.243654822335028, "ngz_fact": 5.0761421319796955, "ndn_plan": 1.5492957746478875, "ndn_fact": 0.8450704225352114, "ndn_delta_pct": -45.45454545454545, "gir_ready": "Частично", "start_year": "2025", "structure_error": 0.4, "heff": "P10>Нэф>P50", "kp": "P10>Кп>P90", "contact_forecast": "<P90", "area": "<P90", "nnt": "P10>ННТ>P90", "sgm": "0.5", "npv_positive": "1", "success": "У", "effectiveness": "1", "deposition": "ДЕЛЬТА", "heff_method_1": "Mean amplitude", "heff_method_2": "Mean amplitude", "rb_plan": "ВОРБ", "rb_fact": "ВОРБ (а)", "p10_p90_plan": "2.1", "p10_p90_fact": "", "ngz_class": "<Р90", "kpr_eff_plan": "1.7", "kpr_eff_fact": "0.93", "kpr_eff_delta_pct": -45.29411764705882, "kpr_nnt_plan": "", "kpr_nnt_fact": "-", "kpr_nnt_delta_pct": null, "driver": "Неоком", "triz": "Традиционный коллектор", "decision": "АИ и Vp/Vs", "test": "В испытании", "comment": "", "cost_delta_pct": -12.146749841713234, "ngz_delta_pct": -68.75, "ndn_delta_abs": -0.7042253521126761}, {"id": 8, "do": "Х", "well": "8", "stage": "Поиск", "gcos_plan": 0.64, "gcos_fact": 0.0, "cost_plan": 19.530807940339788, "cost_fact": 17.90786526933228, "ngz_plan": 9.390862944162437, "ngz_fact": 0.0, "ndn_plan": 0.4225352112676057, "ndn_fact": 0.0, "ndn_delta_pct": -100.0, "gir_ready": "Нет", "start_year": "", "structure_error": 0.78, "heff": "нет кол-ра", "kp": "-", "contact_forecast": "-", "area": "-", "nnt": "-", "sgm": "0", "npv_positive": "0", "success": "Н", "effectiveness": "0", "deposition": "ДЕЛЬТА", "heff_method_1": "Sum of magnitude", "heff_method_2": "Sum of magnitude", "rb_plan": "ВОРБ", "rb_fact": "Неуспех ПО", "p10_p90_plan": "2.5", "p10_p90_fact": "-", "ngz_class": "-", "kpr_eff_plan": "", "kpr_eff_fact": "", "kpr_eff_delta_pct": null, "kpr_nnt_plan": "", "kpr_nnt_fact": "", "kpr_nnt_delta_pct": null, "driver": "Неоком", "triz": "Традиционный коллектор", "decision": "", "test": "Неуспех ПО", "comment": "", "cost_delta_pct": -8.309654551747503, "ngz_delta_pct": -100.0, "ndn_delta_abs": -0.4225352112676057}, {"id": 9, "do": "Н", "well": "9", "stage": "Поиск", "gcos_plan": 0.86, "gcos_fact": 0.0, "cost_plan": 29.158435401027265, "cost_fact": 35.6775977874358, "ngz_plan": 42.639593908629436, "ngz_fact": 0.0, "ndn_plan": 2.2535211267605635, "ndn_fact": 0.0, "ndn_delta_pct": -100.0, "gir_ready": "Нет", "start_year": "", "structure_error": 0.73, "heff": "P50>Нэф>P90", "kp": "P10>Кп>P90", "contact_forecast": "<P90", "area": "вода", "nnt": "вода", "sgm": "0.5", "npv_positive": "0", "success": "Н", "effectiveness": "0", "deposition": "ДЕЛЬТА", "heff_method_1": "от Ноб", "heff_method_2": "от Ноб", "rb_plan": "ВОРБ", "rb_fact": "Неуспех ПО", "p10_p90_plan": "12", "p10_p90_fact": "-", "ngz_class": "-", "kpr_eff_plan": "", "kpr_eff_fact": "", "kpr_eff_delta_pct": null, "kpr_nnt_plan": "", "kpr_nnt_fact": "", "kpr_nnt_delta_pct": null, "driver": "Верх юра", "triz": "Традиционный коллектор", "decision": "наличие структуры", "test": "Неуспех ПО", "comment": "", "cost_delta_pct": 22.357723577235777, "ngz_delta_pct": -100.0, "ndn_delta_abs": -2.2535211267605635}, {"id": 10, "do": "Н", "well": "10", "stage": "Поиск", "gcos_plan": 0.75, "gcos_fact": 1.0, "cost_plan": 38.24575266693007, "cost_fact": 51.550296325563025, "ngz_plan": 64.72081218274111, "ngz_fact": 54.06091370558376, "ndn_plan": 2.016901408450704, "ndn_fact": 5.494366197183099, "ndn_delta_pct": 172.41620111731842, "gir_ready": "Частично", "start_year": "2026", "structure_error": 2.5, "heff": ">Р10", "kp": "P10>Кп>P90", "contact_forecast": "Р10", "area": "P10>S>P50", "nnt": ">Р10", "sgm": "0.5", "npv_positive": "1", "success": "У", "effectiveness": "1", "deposition": "ДЕЛЬТА", "heff_method_1": "от Ноб", "heff_method_2": "от Ноб", "rb_plan": "ВОРБ", "rb_fact": "Неуспех ПО", "p10_p90_plan": "20", "p10_p90_fact": "2.4", "ngz_class": "Р10-Р50", "kpr_eff_plan": "5", "kpr_eff_fact": "11.1", "kpr_eff_delta_pct": 122.0, "kpr_nnt_plan": "18", "kpr_nnt_fact": "249", "kpr_nnt_delta_pct": 1283.3333333333335, "driver": "Верх юра", "triz": "Традиционный коллектор", "decision": "наличие структуры", "test": "+", "comment": "", "cost_delta_pct": 34.786983471074386, "ngz_delta_pct": -16.470588235294116, "ndn_delta_abs": 3.4774647887323944}, {"id": 11, "do": "Н", "well": "11", "stage": "Разведка", "gcos_plan": 1.0, "gcos_fact": 1.0, "cost_plan": 5.807981035163968, "cost_fact": 6.361122086131965, "ngz_plan": 5.799746192893401, "ngz_fact": 7.535532994923858, "ndn_plan": 0.32676056338028175, "ndn_fact": 0.6319718309859146, "ndn_delta_pct": 93.4051724137928, "gir_ready": "Да", "start_year": "2025", "structure_error": 0.62, "heff": "другой пласт", "kp": "-", "contact_forecast": "-", "area": "-", "nnt": "-", "sgm": "0", "npv_positive": "1", "success": "У", "effectiveness": "1", "deposition": "П-О КАНАЛЫ", "heff_method_1": "Интерполяция", "heff_method_2": "Интерполяция", "rb_plan": "ВОРБ", "rb_fact": "ДО", "p10_p90_plan": "2", "p10_p90_fact": "-", "ngz_class": "другой пласт", "kpr_eff_plan": "-", "kpr_eff_fact": "7", "kpr_eff_delta_pct": null, "kpr_nnt_plan": "", "kpr_nnt_fact": "-", "kpr_nnt_delta_pct": null, "driver": "Тюменка", "triz": "ТРИЗ", "decision": "бар в Ю1-1 по атрибутам+русловое тело по Ю2-4", "test": "+", "comment": "Был драйвер Ю1, в добычу пошла Ю2-Ю3", "cost_delta_pct": 9.523809523809534, "ngz_delta_pct": 29.928668329613583, "ndn_delta_abs": 0.30521126760563283}, {"id": 12, "do": "Н", "well": "12", "stage": "Разведка", "gcos_plan": 1.0, "gcos_fact": 1.0, "cost_plan": 7.34887396286053, "cost_fact": 6.1240616357171085, "ngz_plan": 4.314720812182741, "ngz_fact": 7.9822335025380715, "ndn_plan": 0.19436619718309864, "ndn_fact": 1.2098591549295776, "ndn_delta_pct": 522.463768115942, "gir_ready": "Да", "start_year": "2026", "structure_error": 0.5, "heff": ">Р10", "kp": "P10>Кп>P90", "contact_forecast": "P90", "area": "P50>S>P90", "nnt": "P10>ННТ>P90", "sgm": "0.5", "npv_positive": "1", "success": "У", "effectiveness": "1", "deposition": "ДЕЛЬТА", "heff_method_1": "Интерполяция", "heff_method_2": "Интерполяция", "rb_plan": "ВОРБ", "rb_fact": "ДО", "p10_p90_plan": "1.6", "p10_p90_fact": "-", "ngz_class": ">P10", "kpr_eff_plan": "7.3", "kpr_eff_fact": "10", "kpr_eff_delta_pct": 36.986301369863014, "kpr_nnt_plan": "39", "kpr_nnt_fact": "45", "kpr_nnt_delta_pct": 15.384615384615385, "driver": "Верх юра", "triz": "Традиционный коллектор", "decision": "структурно-тектоническая ловушка с хорошим коллектором", "test": "", "comment": "Без испытаний, сразу в добычу куст", "cost_delta_pct": -16.666666666666664, "ngz_delta_pct": 85.00000000000001, "ndn_delta_abs": 1.015492957746479}, {"id": 13, "do": "В", "well": "13", "stage": "Поиск", "gcos_plan": 0.9, "gcos_fact": 1.0, "cost_plan": 22.42781509284868, "cost_fact": 22.745950217305417, "ngz_plan": 12.182741116751268, "ngz_fact": 13.70558375634518, "ndn_plan": 1.830985915492958, "ndn_fact": 1.830985915492958, "ndn_delta_pct": 0.0, "gir_ready": "Нет", "start_year": "2027", "structure_error": 1.0, "heff": "P10>Нэф>P90", "kp": "P10>Кп>P90", "contact_forecast": "<P90", "area": "<P90", "nnt": "P10>ННТ>P90", "sgm": "0.5", "npv_positive": "0.5", "success": "УУ", "effectiveness": "0", "deposition": "ДЕЛЬТА", "heff_method_1": "Прогноз СРР", "heff_method_2": "Комплексный атрибут", "rb_plan": "ВОРБ", "rb_fact": "ДО", "p10_p90_plan": "2.9", "p10_p90_fact": "", "ngz_class": "Р50", "kpr_eff_plan": "0.8", "kpr_eff_fact": "-", "kpr_eff_delta_pct": null, "kpr_nnt_plan": "", "kpr_nnt_fact": "-", "kpr_nnt_delta_pct": null, "driver": "Верх юра", "triz": "Традиционный коллектор", "decision": "", "test": "В испытании", "comment": "Недоиспытана в следствии ЗКЦ с нижележащих интервалов", "cost_delta_pct": 1.4184846947404184, "ngz_delta_pct": 12.500000000000021, "ndn_delta_abs": 0.0}, {"id": 14, "do": "С-М", "well": "14", "stage": "Поиск", "gcos_plan": 0.81, "gcos_fact": 0.0, "cost_plan": 17.53732159712367, "cost_fact": 16.997234294745162, "ngz_plan": 6.192893401015229, "ngz_fact": 0.0, "ndn_plan": 0.9619718309859157, "ndn_fact": 0.0, "ndn_delta_pct": -100.0, "gir_ready": "Нет", "start_year": "", "structure_error": 2.3, "heff": "Р50", "kp": "-", "contact_forecast": "-", "area": "-", "nnt": "вода", "sgm": "0.5", "npv_positive": "0", "success": "Н", "effectiveness": "0", "deposition": "РУСЛА", "heff_method_1": "Интерполяция", "heff_method_2": "Интерполяция", "rb_plan": "ВОРБ", "rb_fact": "Неуспех ПО", "p10_p90_plan": "25", "p10_p90_fact": "-", "ngz_class": "другой пласт", "kpr_eff_plan": "", "kpr_eff_fact": "", "kpr_eff_delta_pct": null, "kpr_nnt_plan": "", "kpr_nnt_fact": "", "kpr_nnt_delta_pct": null, "driver": "Верх юра", "triz": "Традиционный коллектор", "decision": "ярко выраженная аномалия в виде речного русла", "test": "Неуспех", "comment": "", "cost_delta_pct": -3.079645311785162, "ngz_delta_pct": -100.0, "ndn_delta_abs": -0.9619718309859157}, {"id": 15, "do": "С-М", "well": "15", "stage": "Разведка", "gcos_plan": 1.0, "gcos_fact": 1.0, "cost_plan": 21.179770841564604, "cost_fact": 20.77198735677598, "ngz_plan": 14.720812182741117, "ngz_fact": 14.720812182741117, "ndn_plan": 1.268323943661972, "ndn_fact": 1.2032816901408452, "ndn_delta_pct": -5.12820512820513, "gir_ready": "Да", "start_year": "2026", "structure_error": 1.9, "heff": "P50>Нэф>P90", "kp": "P10>Кп>P90", "contact_forecast": "Р10-Р90", "area": "Р50", "nnt": "<P90", "sgm": "1", "npv_positive": "1", "success": "У", "effectiveness": "1", "deposition": "П-М ОБСТАНОВКИ", "heff_method_1": "Русла+ГСР", "heff_method_2": "Русла+ГСР", "rb_plan": "ВОРБ", "rb_fact": "ДО", "p10_p90_plan": "1.7-3.5", "p10_p90_fact": "-", "ngz_class": "Р90", "kpr_eff_plan": "5.6", "kpr_eff_fact": "13", "kpr_eff_delta_pct": 132.14285714285717, "kpr_nnt_plan": "28", "kpr_nnt_fact": "42", "kpr_nnt_delta_pct": 50.0, "driver": "Тюменка", "triz": "ТРИЗ", "decision": "перевод в промыш категорию", "test": "+", "comment": "", "cost_delta_pct": -1.9253441778905422, "ngz_delta_pct": 0.0, "ndn_delta_abs": -0.0650422535211268}, {"id": 16, "do": "С-М", "well": "16", "stage": "Поиск", "gcos_plan": 0.87, "gcos_fact": 1.0, "cost_plan": 12.74239431054919, "cost_fact": 8.530975898854209, "ngz_plan": 18.78172588832487, "ngz_fact": 21.927903321394542, "ndn_plan": 2.9253521126760567, "ndn_fact": 1.352112676056338, "ndn_delta_pct": -53.779489648531545, "gir_ready": "Да", "start_year": "2026", "structure_error": 2.0, "heff": "P10>Нэф>P50", "kp": "P10>Кп>P90", "contact_forecast": "", "area": "", "nnt": ">Р10", "sgm": "-", "npv_positive": "1", "success": "У", "effectiveness": "1", "deposition": "П-О КАНАЛЫ", "heff_method_1": "RMS", "heff_method_2": "от Ноб в руслах, вне русел - от RMS", "rb_plan": "ВОРБ", "rb_fact": "-", "p10_p90_plan": "2.7", "p10_p90_fact": "-", "ngz_class": "-", "kpr_eff_plan": "8.5", "kpr_eff_fact": "0.84", "kpr_eff_delta_pct": -90.11764705882354, "kpr_nnt_plan": "94", "kpr_nnt_fact": "17", "kpr_nnt_delta_pct": -81.91489361702128, "driver": "Тюменка", "triz": "ТРИЗ", "decision": "русло по данным 3Д СРР", "test": "+", "comment": "", "cost_delta_pct": -33.05044804812254, "ngz_delta_pct": 16.751269035533124, "ndn_delta_abs": -1.5732394366197187}, {"id": 17, "do": "С-М", "well": "17", "stage": "Разведка", "gcos_plan": 1.0, "gcos_fact": 1.0, "cost_plan": 3.476886606084552, "cost_fact": 3.1394705649940735, "ngz_plan": 2.446700507614213, "ngz_fact": 5.106598984771574, "ndn_plan": 0.6070422535211268, "ndn_fact": 1.8647887323943664, "ndn_delta_pct": 207.19257540603246, "gir_ready": "Да", "start_year": "2026", "structure_error": 1.0, "heff": "P10>Нэф>P50", "kp": "P10>Кп>P90", "contact_forecast": "Р10-Р90", "area": "Р10", "nnt": "Р50", "sgm": "1", "npv_positive": "1", "success": "БУ", "effectiveness": "1", "deposition": "П-О РАВНИНА", "heff_method_1": "Интерполяция", "heff_method_2": "Интерполяция", "rb_plan": "ДО", "rb_fact": "ДО", "p10_p90_plan": "", "p10_p90_fact": "-", "ngz_class": "+100% от Р50_пл", "kpr_eff_plan": "2.7", "kpr_eff_fact": "5.6", "kpr_eff_delta_pct": 107.40740740740738, "kpr_nnt_plan": "11", "kpr_nnt_fact": "17", "kpr_nnt_delta_pct": 54.54545454545454, "driver": "Верх юра", "triz": "Традиционный коллектор", "decision": "", "test": "+", "comment": "", "cost_delta_pct": -9.704545454545466, "ngz_delta_pct": 108.7136929460581, "ndn_delta_abs": 1.2577464788732395}, {"id": 18, "do": "С-М", "well": "18", "stage": "Разведка", "gcos_plan": 1.0, "gcos_fact": 1.0, "cost_plan": 3.7139470564994075, "cost_fact": 4.425128407743975, "ngz_plan": 3.2614213197969546, "ngz_fact": 2.6878172588832485, "ndn_plan": 1.117043661971831, "ndn_fact": 0.0, "ndn_delta_pct": -100.0, "gir_ready": "Нет", "start_year": "", "structure_error": 2.0, "heff": ">Р10", "kp": "P10>Кп>P90", "contact_forecast": "Р50", "area": "Р50", "nnt": "P10>ННТ>P90", "sgm": "0.5", "npv_positive": "0", "success": "УУ", "effectiveness": "0", "deposition": "П-М ОБСТАНОВКИ", "heff_method_1": "Интерполяция", "heff_method_2": "Интерполяция", "rb_plan": "ДО", "rb_fact": "ДО", "p10_p90_plan": "", "p10_p90_fact": "-", "ngz_class": "-18% от Р50_пл", "kpr_eff_plan": "4.2", "kpr_eff_fact": "0.1", "kpr_eff_delta_pct": -97.61904761904762, "kpr_nnt_plan": "3", "kpr_nnt_fact": "0.64", "kpr_nnt_delta_pct": -78.66666666666666, "driver": "Тюменка", "triz": "ТРИЗ", "decision": "Скв. данные, граница съемки 3Д СРР, невозможно проследить русло", "test": "+", "comment": "План - пласт Ю2+Ю3, факт - Ю2", "cost_delta_pct": 19.14893617021278, "ngz_delta_pct": -17.58754863813231, "ndn_delta_abs": -1.117043661971831}, {"id": 19, "do": "С-М", "well": "19", "stage": "Разведка", "gcos_plan": 1.0, "gcos_fact": 1.0, "cost_plan": 3.476886606084552, "cost_fact": 3.0829711576451997, "ngz_plan": 3.5812182741116754, "ngz_fact": 12.230964467005077, "ndn_plan": 0.695774647887324, "ndn_fact": 2.054929577464789, "ndn_delta_pct": 195.34412955465586, "gir_ready": "Да", "start_year": "2026", "structure_error": 0.4, "heff": "P10>Нэф>P50", "kp": "P10>Кп>P90", "contact_forecast": "Р50", "area": "Р50", "nnt": "Р10", "sgm": "1", "npv_positive": "1", "success": "БУ", "effectiveness": "1", "deposition": "РУСЛА", "heff_method_1": "RMS", "heff_method_2": "2 разных зависимости от Ноб: в руслах, вне русел", "rb_plan": "ДО", "rb_fact": "ДО", "p10_p90_plan": "", "p10_p90_fact": "-", "ngz_class": "+240% от Р50_пл", "kpr_eff_plan": "5", "kpr_eff_fact": "0.77", "kpr_eff_delta_pct": -84.60000000000001, "kpr_nnt_plan": "102", "kpr_nnt_fact": "16", "kpr_nnt_delta_pct": -84.31372549019608, "driver": "Тюменка", "triz": "ТРИЗ", "decision": "", "test": "+", "comment": "", "cost_delta_pct": -11.329545454545453, "ngz_delta_pct": 241.53082919914954, "ndn_delta_abs": 1.359154929577465}, {"id": 20, "do": "С-М", "well": "20", "stage": "Разведка", "gcos_plan": 1.0, "gcos_fact": 1.0, "cost_plan": null, "cost_fact": 12.13314895298301, "ngz_plan": 7.6142131979695495, "ngz_fact": 7.614213197969543, "ndn_plan": 0.6281690140845071, "ndn_fact": 0.8173169014084508, "ndn_delta_pct": 30.11098654708521, "gir_ready": "Да", "start_year": "2026", "structure_error": 0.73, "heff": "<P90", "kp": "P10>Кп>P90", "contact_forecast": "Р50", "area": "", "nnt": "", "sgm": "0.5", "npv_positive": "1", "success": "У", "effectiveness": "1", "deposition": "ДЕЛЬТОВАЯ РАВНИНА", "heff_method_1": "RMS", "heff_method_2": "RMS", "rb_plan": "ДО", "rb_fact": "ДО", "p10_p90_plan": "", "p10_p90_fact": "-", "ngz_class": "-74% от Р50_пл", "kpr_eff_plan": "1", "kpr_eff_fact": "0.43", "kpr_eff_delta_pct": -57.00000000000001, "kpr_nnt_plan": "10", "kpr_nnt_fact": "2", "kpr_nnt_delta_pct": -80.0, "driver": "Тюменка", "triz": "ТРИЗ", "decision": "", "test": "В испытании.", "comment": "Не подтверждение ВНК в Ю1 (<Р90)", "cost_delta_pct": null, "ngz_delta_pct": -7.771561172376096e-14, "ndn_delta_abs": 0.18914788732394372}, {"id": 21, "do": "С", "well": "21", "stage": "Разведка", "gcos_plan": 1.0, "gcos_fact": 1.0, "cost_plan": 33.18846305807981, "cost_fact": 34.39030002449625, "ngz_plan": 69.03553299492386, "ngz_fact": 62.944162436548226, "ndn_plan": 1.6901408450704227, "ndn_fact": 1.4084507042253522, "ndn_delta_pct": -16.666666666666668, "gir_ready": "Нет", "start_year": "2028", "structure_error": 0.1, "heff": "Р50", "kp": "P10>Кп>P90", "contact_forecast": "P90", "area": "P10>S>P50", "nnt": "Р50", "sgm": "1", "npv_positive": "-", "success": "УУ", "effectiveness": "-", "deposition": "РУСЛА", "heff_method_1": "RMS", "heff_method_2": "RMS", "rb_plan": "ВОРБ", "rb_fact": "ДО", "p10_p90_plan": "3.1", "p10_p90_fact": "-", "ngz_class": "Р90-Р50", "kpr_eff_plan": "", "kpr_eff_fact": "", "kpr_eff_delta_pct": null, "kpr_nnt_plan": "", "kpr_nnt_fact": "-", "kpr_nnt_delta_pct": null, "driver": "Тюменка", "triz": "ТРИЗ", "decision": "Заложение скважин в русла по RGB", "test": "В испытании.", "comment": "", "cost_delta_pct": 3.6212492404761987, "ngz_delta_pct": -8.823529411764696, "ndn_delta_abs": -0.2816901408450705}, {"id": 22, "do": "С", "well": "22", "stage": "Поиск", "gcos_plan": 0.94, "gcos_fact": 1.0, "cost_plan": 10.99960489924931, "cost_fact": 12.435289436521257, "ngz_plan": 18.225888324873097, "ngz_fact": 22.33502538071066, "ndn_plan": 2.394366197183099, "ndn_fact": 1.9746478873239437, "ndn_delta_pct": -17.529411764705895, "gir_ready": "Да", "start_year": "2025", "structure_error": 0.5, "heff": "P10>Нэф>P50", "kp": "P10>Кп>P90", "contact_forecast": "Р10-Р90", "area": "P50>S>P90", "nnt": ">P10", "sgm": "1", "npv_positive": "1", "success": "БУ", "effectiveness": "1", "deposition": "ДЕЛЬТА", "heff_method_1": "Vp/Vs", "heff_method_2": "Vp/Vs", "rb_plan": "ВОРБ", "rb_fact": "ДО", "p10_p90_plan": "5.1", "p10_p90_fact": "-", "ngz_class": "Р90-Р50", "kpr_eff_plan": "17", "kpr_eff_fact": "19", "kpr_eff_delta_pct": 11.76470588235294, "kpr_nnt_plan": "133", "kpr_nnt_fact": "467", "kpr_nnt_delta_pct": 251.1278195488722, "driver": "Неоком", "triz": "Традиционный коллектор", "decision": "", "test": "+", "comment": "", "cost_delta_pct": 13.052146421822197, "ngz_delta_pct": 22.545606461495616, "ndn_delta_abs": -0.41971830985915526}, {"id": 23, "do": "С", "well": "23", "stage": "Поиск", "gcos_plan": 0.45, "gcos_fact": 1.0, "cost_plan": 14.302647175029634, "cost_fact": 16.284863233504545, "ngz_plan": 13.70558375634518, "ngz_fact": 7.614213197969543, "ndn_plan": 0.4225352112676057, "ndn_fact": 0.8859154929577465, "ndn_delta_pct": 109.66666666666664, "gir_ready": "Да", "start_year": "2026", "structure_error": 0.2, "heff": "P90", "kp": "P10>Кп>P90", "contact_forecast": "Р50", "area": "P50>S>P90", "nnt": "P10>ННТ>P50", "sgm": "1", "npv_positive": "1", "success": "БУ", "effectiveness": "1", "deposition": "МЕАНДР ОТЛ-Я", "heff_method_1": "Vp/Vs", "heff_method_2": "Vp/Vs", "rb_plan": "ВОРБ", "rb_fact": "ДО", "p10_p90_plan": "7.6", "p10_p90_fact": "-", "ngz_class": "Р10-Р50", "kpr_eff_plan": "16.5", "kpr_eff_fact": "17", "kpr_eff_delta_pct": 3.0303030303030303, "kpr_nnt_plan": "152", "kpr_nnt_fact": "229", "kpr_nnt_delta_pct": 50.6578947368421, "driver": "Неоком", "triz": "Традиционный коллектор", "decision": "Vp/Vs", "test": "+", "comment": "", "cost_delta_pct": 13.859085204419896, "ngz_delta_pct": -44.44444444444445, "ndn_delta_abs": 0.46338028169014084}, {"id": 24, "do": "С", "well": "24", "stage": "Поиск", "gcos_plan": 0.64, "gcos_fact": 1.0, "cost_plan": 7.178980640063216, "cost_fact": 7.574212475701304, "ngz_plan": 8.629441624365482, "ngz_fact": 8.629441624365482, "ndn_plan": 0.7605633802816902, "ndn_fact": 0.35211267605633806, "ndn_delta_pct": -53.70370370370371, "gir_ready": "Нет", "start_year": "", "structure_error": 1.83, "heff": "P10>Нэф>P50", "kp": "P10>Кп>P90", "contact_forecast": "Р50", "area": "Р10-Р90", "nnt": "Р90", "sgm": "1", "npv_positive": "0", "success": "У", "effectiveness": "0", "deposition": "КОНУС ВЫНОСА", "heff_method_1": "RMS", "heff_method_2": "RMS", "rb_plan": "ВОРБ", "rb_fact": "ДО", "p10_p90_plan": "-", "p10_p90_fact": "-", "ngz_class": "-", "kpr_eff_plan": "0.35", "kpr_eff_fact": "0.3", "kpr_eff_delta_pct": -14.285714285714283, "kpr_nnt_plan": "3.48", "kpr_nnt_fact": "1.92", "kpr_nnt_delta_pct": -44.827586206896555, "driver": "Ач", "triz": "ТРИЗ", "decision": "RMS", "test": "Необходим РИР.", "comment": "", "cost_delta_pct": 5.505403280132093, "ngz_delta_pct": 0.0, "ndn_delta_abs": -0.4084507042253522}, {"id": 25, "do": "С", "well": "25", "stage": "Разведка", "gcos_plan": 1.0, "gcos_fact": 1.0, "cost_plan": 18.79494271039115, "cost_fact": 22.172415532595814, "ngz_plan": 44.67005076142132, "ngz_fact": 45.93908629441625, "ndn_plan": 1.5492957746478875, "ndn_fact": 0.5633802816901409, "ndn_delta_pct": -63.63636363636363, "gir_ready": "Нет", "start_year": "2028", "structure_error": 0.2, "heff": "P10>Нэф>P90", "kp": "P10>Кп>P90", "contact_forecast": "Р10", "area": "Р10", "nnt": ">P10", "sgm": "1", "npv_positive": "0", "success": "У", "effectiveness": "0", "deposition": "РУСЛА", "heff_method_1": "RMS", "heff_method_2": "RMS", "rb_plan": "ВОРБ", "rb_fact": "ДО", "p10_p90_plan": "3.7", "p10_p90_fact": "-", "ngz_class": "Р10-Р50", "kpr_eff_plan": "0.31", "kpr_eff_fact": "0.06", "kpr_eff_delta_pct": -80.64516129032259, "kpr_nnt_plan": "0.86", "kpr_nnt_fact": "0.26", "kpr_nnt_delta_pct": -69.76744186046511, "driver": "Тюменка", "triz": "ТРИЗ", "decision": "Заложение скважин в русла по RGB", "test": "+", "comment": "Не подтвердились целевые дебиты", "cost_delta_pct": 17.97011501576624, "ngz_delta_pct": 2.840909090909105, "ndn_delta_abs": -0.9859154929577466}, {"id": 26, "do": "С", "well": "26", "stage": "Разведка", "gcos_plan": 1.0, "gcos_fact": 1.0, "cost_plan": 16.819438956934018, "cost_fact": 17.366886769261164, "ngz_plan": 59.64467005076142, "ngz_fact": 43.172588832487314, "ndn_plan": 3.098591549295775, "ndn_fact": 0.9859154929577465, "ndn_delta_pct": -68.18181818181819, "gir_ready": "Нет", "start_year": "2028", "structure_error": 1.0, "heff": "P10>Нэф>P50", "kp": "P10>Кп>P90", "contact_forecast": "P90", "area": "<P90", "nnt": "P10>ННТ>P50", "sgm": "0.5", "npv_positive": "0", "success": "У", "effectiveness": "0", "deposition": "РУСЛА", "heff_method_1": "RMS", "heff_method_2": "RMS", "rb_plan": "ВОРБ", "rb_fact": "ДО", "p10_p90_plan": "4.5", "p10_p90_fact": "-", "ngz_class": "Р90-Р50", "kpr_eff_plan": "0.3", "kpr_eff_fact": "0.03", "kpr_eff_delta_pct": -90.00000000000001, "kpr_nnt_plan": "0.86", "kpr_nnt_fact": "0.14", "kpr_nnt_delta_pct": -83.72093023255813, "driver": "Тюменка", "triz": "ТРИЗ", "decision": "Заложение скважин в русла по RGB", "test": "+", "comment": "Не подтвердились целевые дебиты", "cost_delta_pct": 3.2548518040873997, "ngz_delta_pct": -27.617021276595732, "ndn_delta_abs": -2.1126760563380285}, {"id": 27, "do": "С", "well": "27", "stage": "Поиск", "gcos_plan": 0.95, "gcos_fact": 1.0, "cost_plan": 5.800592256025287, "cost_fact": 6.200526140655868, "ngz_plan": 4.6700507614213205, "ngz_fact": 7.614213197969543, "ndn_plan": 0.34366197183098596, "ndn_fact": 0.26760563380281693, "ndn_delta_pct": -22.131147540983605, "gir_ready": "Нет", "start_year": "", "structure_error": 1.0, "heff": "P10>Нэф>P50", "kp": "P10>Кп>P90", "contact_forecast": "Р50-Р90", "area": "Р10", "nnt": "Р10", "sgm": "1", "npv_positive": "0", "success": "У", "effectiveness": "0", "deposition": "РУСЛА", "heff_method_1": "RMS", "heff_method_2": "RMS", "rb_plan": "ДО", "rb_fact": "ДО", "p10_p90_plan": "-", "p10_p90_fact": "-", "ngz_class": "+67% от Р50_пл", "kpr_eff_plan": "", "kpr_eff_fact": "", "kpr_eff_delta_pct": null, "kpr_nnt_plan": "-", "kpr_nnt_fact": "-", "kpr_nnt_delta_pct": null, "driver": "Тюменка", "triz": "ТРИЗ", "decision": "", "test": "+", "comment": "Актуализация БК", "cost_delta_pct": 6.894707763938324, "ngz_delta_pct": 63.043478260869534, "ndn_delta_abs": -0.07605633802816902}, {"id": 28, "do": "МР", "well": "28", "stage": "Поиск", "gcos_plan": 0.66, "gcos_fact": 1.0, "cost_plan": 100.00000000000001, "cost_fact": 92.09798498617148, "ngz_plan": 50.0, "ngz_fact": null, "ndn_plan": 20.0, "ndn_fact": 8.028169014084508, "ndn_delta_pct": -59.859154929577464, "gir_ready": "Нет", "start_year": "", "structure_error": 1.0, "heff": "Р50", "kp": "P10>Кп>P90", "contact_forecast": "перекорреляция пластов", "area": "", "nnt": "", "sgm": "0", "npv_positive": "0.5", "success": "У", "effectiveness": "0", "deposition": "КОНУС ВЫНОСА", "heff_method_1": "АИ", "heff_method_2": "АИ", "rb_plan": "ВОРБ", "rb_fact": "ВОРБ", "p10_p90_plan": "-", "p10_p90_fact": "", "ngz_class": "-", "kpr_eff_plan": "0.3", "kpr_eff_fact": "0.047", "kpr_eff_delta_pct": -84.33333333333334, "kpr_nnt_plan": "7.1", "kpr_nnt_fact": "1.1", "kpr_nnt_delta_pct": -84.50704225352113, "driver": "Ач", "triz": "ТРИЗ", "decision": "Максимальные сумм эффективные толщины по Ач пластам (АИ)", "test": "+", "comment": "Актуализация БК", "cost_delta_pct": -7.902015013828533, "ngz_delta_pct": null, "ndn_delta_abs": -11.971830985915492}, {"id": 29, "do": "МС", "well": "29", "stage": "Поиск", "gcos_plan": 0.69, "gcos_fact": 1.0, "cost_plan": 46.75112225121331, "cost_fact": 57.3686290003951, "ngz_plan": 100.76142131979697, "ngz_fact": 59.390862944162436, "ndn_plan": 7.323943661971832, "ndn_fact": 0.0, "ndn_delta_pct": -100.0, "gir_ready": "Нет", "start_year": "2030", "structure_error": 2.1, "heff": "другой пласт (СГ1-2)", "kp": "-", "contact_forecast": "-", "area": "-", "nnt": "-", "sgm": "0", "npv_positive": "0", "success": "УУ", "effectiveness": "0", "deposition": "КОНУС + М-М БАРЫ", "heff_method_1": "АИ", "heff_method_2": "АИ", "rb_plan": "ВОРБ", "rb_fact": "ВОРБ", "p10_p90_plan": "6", "p10_p90_fact": "6.6", "ngz_class": "другой пласт", "kpr_eff_plan": "", "kpr_eff_fact": "", "kpr_eff_delta_pct": null, "kpr_nnt_plan": "-", "kpr_nnt_fact": "-", "kpr_nnt_delta_pct": null, "driver": "Неоком+Ач", "triz": "Традиционный коллектор", "decision": "АИ", "test": "+", "comment": "Не подверждены Ач и НХ (плановые пласты),коллектора нет, открыты НГЗ в СГ1-2. Выполнена сейсмич инверсия, но отсутствовали данные для калибровки в этих интервалах", "cost_delta_pct": 22.71069920445865, "ngz_delta_pct": -41.05793450881613, "ndn_delta_abs": -7.323943661971832}, {"id": 30, "do": "МС", "well": "30", "stage": "Поиск", "gcos_plan": 0.76, "gcos_fact": 1.0, "cost_plan": 29.39549585144212, "cost_fact": 67.09844954762585, "ngz_plan": 82.99492385786803, "ngz_fact": 82.23350253807106, "ndn_plan": 0.7929577464788732, "ndn_fact": 1.1464788732394366, "ndn_delta_pct": 44.58259325044406, "gir_ready": "Нет", "start_year": "2032", "structure_error": 1.0, "heff": "Р90", "kp": "Р90", "contact_forecast": "Р10", "area": ">Р10", "nnt": "P50>ННТ>P90", "sgm": "0.5", "npv_positive": "1", "success": "У", "effectiveness": "1", "deposition": "КОНУС ВЫНОСА", "heff_method_1": "АИ и Vp/Vs", "heff_method_2": "АИ и Vp/Vs", "rb_plan": "ВОРБ", "rb_fact": "ДО", "p10_p90_plan": "20", "p10_p90_fact": "-", "ngz_class": "Р10-Р50", "kpr_eff_plan": "0.16", "kpr_eff_fact": "0.16", "kpr_eff_delta_pct": 0.0, "kpr_nnt_plan": "4.8", "kpr_nnt_fact": "4.5", "kpr_nnt_delta_pct": -6.2499999999999964, "driver": "Ач", "triz": "ТРИЗ", "decision": "Сейсмическая инверсия", "test": "+", "comment": "! Толщины подтверждены маленькие, а запасы после переоценки выросли!", "cost_delta_pct": 128.26098898527016, "ngz_delta_pct": -0.9174311926605672, "ndn_delta_abs": 0.35352112676056346}], "source": "Проба2.xlsx", "updated": "10.06.2026 18:37"};
+    var LEGACY_COLORS = ['#1261a6', '#00a3a3', '#16805b', '#b86b00', '#bd2d2d', '#6d5bd0', '#5c6f82'];
+    var legacyState = { sortKey: 'risk_score', sortDir: -1 };
+    function lgN(value) { var number = Number(value); return isFinite(number) ? number : 0; }
+    function lgHas(value) { return value !== null && value !== undefined && value !== ''; }
+    function lgFmt(value, digits) {
+      digits = digits === undefined ? 1 : digits;
+      var number = Number(value);
+      return isFinite(number) ? number.toLocaleString('ru-RU', { maximumFractionDigits: digits }) : '-';
+    }
+    function lgPct(value) {
+      var number = Number(value);
+      return isFinite(number) ? number.toLocaleString('ru-RU', { maximumFractionDigits: 1 }) + '%' : '-';
+    }
+    function lgHtml(value) {
+      return String(value === null || value === undefined ? '' : value).replace(/[&<>"']/g, function (s) {
+        return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[s];
+      });
+    }
+    function lgSum(rows, key) {
+      var total = 0;
+      for (var i = 0; i < rows.length; i += 1) total += lgN(rows[i][key]);
+      return total;
+    }
+    function lgAvg(rows, key) {
+      var total = 0, count = 0;
+      for (var i = 0; i < rows.length; i += 1) {
+        var number = Number(rows[i][key]);
+        if (isFinite(number)) { total += number; count += 1; }
+      }
+      return count ? total / count : 0;
+    }
+    function lgUnique(key) {
+      var seen = {}, values = [];
+      for (var i = 0; i < LEGACY_DATA.records.length; i += 1) {
+        var value = LEGACY_DATA.records[i][key];
+        if (lgHas(value) && !seen[value]) { seen[value] = true; values.push(value); }
+      }
+      values.sort(function (a, b) { return String(a).localeCompare(String(b), 'ru'); });
+      return values;
+    }
+    function lgFillSelect(id, values, label) {
+      var html = '<option value="">' + lgHtml(label) + '</option>';
+      for (var i = 0; i < values.length; i += 1) html += '<option value="' + lgHtml(values[i]) + '">' + lgHtml(values[i]) + '</option>';
+      document.getElementById(id).innerHTML = html;
+    }
+    function lgGirValues() {
+      var inputs = document.querySelectorAll ? document.querySelectorAll('#girMenu input[type="checkbox"]') : [];
+      var values = [];
+      for (var i = 0; i < inputs.length; i += 1) if (inputs[i].checked) values.push(inputs[i].value);
+      return values;
+    }
+    function lgFillGirMulti(values) {
+      var menu = document.getElementById('girMenu'), html = '';
+      for (var i = 0; i < values.length; i += 1) {
+        html += '<label class="multi-option"><input type="checkbox" value="' + lgHtml(values[i]) + '"><span>' + lgHtml(values[i]) + '</span></label>';
+      }
+      menu.innerHTML = html;
+      var inputs = menu.querySelectorAll ? menu.querySelectorAll('input') : [];
+      for (var j = 0; j < inputs.length; j += 1) {
+        lgOn(inputs[j], 'change', function () { lgUpdateGirText(); lgRender(); });
+      }
+      lgUpdateGirText();
+    }
+    function lgUpdateGirText() {
+      var values = lgGirValues();
+      document.getElementById('girToggle').innerHTML = values.length ? values.join(', ') : 'Любая готовность';
+    }
+    function lgRisk(row) {
+      var score = 0;
+      if (row.gir_ready === 'Нет') score += 28;
+      if (row.gir_ready === 'Частично') score += 16;
+      if (row.success === 'Н') score += 28;
+      if (row.success === 'УУ') score += 14;
+      if (lgN(row.ndn_delta_pct) <= -40) score += 22;
+      else if (lgN(row.ndn_delta_pct) <= -20) score += 12;
+      if (lgN(row.cost_delta_pct) >= 20) score += 12;
+      if (lgN(row.structure_error) >= 2) score += 8;
+      if (String(row.test).indexOf('Неуспех') >= 0) score += 10;
+      return score;
+    }
+    function lgIsGirReady(row) {
+      return row.gir_ready === 'Да' || row.gir_ready === 'Частично';
+    }
+    function lgIsEconomicallySuccessful(row) {
+      var value = lgN(row.npv_positive);
+      return value === 1 || value === 0.5;
+    }
+    function lgCurrentRows() {
+      var rows = [], filterDo = document.getElementById('do').value, stage = document.getElementById('stage').value;
+      var girValues = lgGirValues(), triz = document.getElementById('triz').value;
+      var driver = document.getElementById('driver').value;
+      var search = document.getElementById('search').value.toLowerCase();
+      for (var i = 0; i < LEGACY_DATA.records.length; i += 1) {
+        var row = LEGACY_DATA.records[i];
+        if (filterDo && row.do !== filterDo) continue;
+        if (stage && row.stage !== stage) continue;
+        if (girValues.length && girValues.indexOf(row.gir_ready) < 0) continue;
+        if (triz && row.triz !== triz) continue;
+        if (driver && row.driver !== driver) continue;
+        if (search) {
+          var hay = [row.well, row.do, row.stage, row.deposition, row.driver, row.decision, row.comment, row.test].join(' ').toLowerCase();
+          if (hay.indexOf(search) < 0) continue;
+        }
+        var copy = {};
+        for (var key in row) if (Object.prototype.hasOwnProperty.call(row, key)) copy[key] = row[key];
+        copy.risk_score = lgRisk(row);
+        rows.push(copy);
+      }
+      return rows;
+    }
+    function lgGroup(rows, key) {
+      var map = {}, order = [];
+      for (var i = 0; i < rows.length; i += 1) {
+        var label = lgHas(rows[i][key]) ? rows[i][key] : 'Не указано';
+        if (!map[label]) { map[label] = []; order.push(label); }
+        map[label].push(rows[i]);
+      }
+      var result = [];
+      for (var j = 0; j < order.length; j += 1) {
+        var items = map[order[j]], plan = lgSum(items, 'ndn_plan'), fact = lgSum(items, 'ndn_fact');
+        result.push({ label: order[j], items: items, count: items.length, ndn_fact: fact, ndn_plan: plan, cost_fact: lgSum(items, 'cost_fact'), ready: 0, ndn_delta_pct: plan ? (fact / plan - 1) * 100 : 0 });
+      }
+      return result;
+    }
+    function lgTop(rows, key, dir, limit) {
+      dir = dir === undefined ? -1 : dir;
+      limit = limit || 10;
+      return rows.slice().sort(function (a, b) { return (lgN(a[key]) - lgN(b[key])) * dir; }).slice(0, limit);
+    }
+    function lgCanvas(id) {
+      var canvas = document.getElementById(id);
+      if (!canvas || !canvas.getContext) return null;
+      var rect = canvas.getBoundingClientRect ? canvas.getBoundingClientRect() : { width: canvas.clientWidth || 600, height: canvas.clientHeight || 300 };
+      var ratio = window.devicePixelRatio || 1;
+      canvas.width = Math.max(1, rect.width * ratio);
+      canvas.height = Math.max(1, rect.height * ratio);
+      var ctx = canvas.getContext('2d');
+      if (!ctx) return null;
+      if (ctx.setTransform) ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+      ctx.clearRect(0, 0, rect.width, rect.height);
+      ctx.font = '12px Arial';
+      ctx.fillStyle = '#122033';
+      return { ctx: ctx, width: rect.width, height: rect.height };
+    }
+    function lgDrawBars(id, rows, padL, color) {
+      var c = lgCanvas(id);
+      if (!c) return;
+      padL = padL || 112;
+      var padR = 18, padT = 18, rowH = Math.max(22, (c.height - padT - 24) / Math.max(rows.length, 1));
+      var max = 1;
+      for (var i = 0; i < rows.length; i += 1) max = Math.max(max, lgN(rows[i].value), lgN(rows[i].value2));
+      for (var j = 0; j < rows.length; j += 1) {
+        var row = rows[j], y = padT + j * rowH;
+        c.ctx.fillStyle = '#5b6472'; c.ctx.textAlign = 'right';
+        c.ctx.fillText(String(row.label).slice(0, 18), padL - 8, y + 14);
+        var w = lgN(row.value) / max * (c.width - padL - padR);
+        c.ctx.fillStyle = row.color || color || LEGACY_COLORS[j % LEGACY_COLORS.length];
+        c.ctx.fillRect(padL, y + 3, w, Math.max(8, rowH * .42));
+        if (lgHas(row.value2)) {
+          var w2 = lgN(row.value2) / max * (c.width - padL - padR);
+          c.ctx.fillStyle = 'rgba(18,97,166,.22)';
+          c.ctx.fillRect(padL, y + Math.max(13, rowH * .52), w2, 6);
+        }
+        c.ctx.fillStyle = '#122033'; c.ctx.textAlign = 'left';
+        c.ctx.fillText(lgFmt(row.value, 2), padL + w + 6, y + 14);
+      }
+    }
+    function lgDrawDonut(id, groups) {
+      var c = lgCanvas(id);
+      if (!c) return;
+      var total = 0;
+      for (var i = 0; i < groups.length; i += 1) total += groups[i].count;
+      total = Math.max(1, total);
+      var cx = c.width / 2, cy = c.height / 2, r = Math.min(c.width, c.height) * .34, start = -Math.PI / 2;
+      for (var j = 0; j < groups.length; j += 1) {
+        var angle = groups[j].count / total * Math.PI * 2;
+        c.ctx.beginPath(); c.ctx.moveTo(cx, cy); c.ctx.arc(cx, cy, r, start, start + angle); c.ctx.closePath();
+        c.ctx.fillStyle = LEGACY_COLORS[j % LEGACY_COLORS.length]; c.ctx.fill(); start += angle;
+      }
+      c.ctx.beginPath(); c.ctx.arc(cx, cy, r * .58, 0, Math.PI * 2); c.ctx.fillStyle = '#fff'; c.ctx.fill();
+      c.ctx.textAlign = 'center'; c.ctx.fillStyle = '#122033'; c.ctx.font = 'bold 22px Arial'; c.ctx.fillText(lgFmt(total, 0), cx, cy - 2);
+      c.ctx.font = '12px Arial'; c.ctx.fillStyle = '#667085'; c.ctx.fillText('объектов', cx, cy + 17);
+    }
+    function lgDrawScatter(rows) {
+      var c = lgCanvas('scatter');
+      if (!c) return;
+      var pad = 42, maxX = 1, maxY = 1;
+      for (var i = 0; i < rows.length; i += 1) { maxX = Math.max(maxX, lgN(rows[i].cost_fact)); maxY = Math.max(maxY, lgN(rows[i].ndn_fact)); }
+      c.ctx.strokeStyle = '#d8dee8'; c.ctx.beginPath(); c.ctx.moveTo(pad, c.height - pad); c.ctx.lineTo(c.width - pad, c.height - pad); c.ctx.lineTo(c.width - pad, pad); c.ctx.stroke();
+      for (var j = 0; j < rows.length; j += 1) {
+        var row = rows[j], x = pad + lgN(row.cost_fact) / maxX * (c.width - pad * 2), y = c.height - pad - lgN(row.ndn_fact) / maxY * (c.height - pad * 2);
+        var rr = 4 + Math.min(12, lgRisk(row) / 8);
+        c.ctx.beginPath(); c.ctx.arc(x, y, rr, 0, Math.PI * 2);
+        c.ctx.fillStyle = lgRisk(row) > 45 ? 'rgba(189,45,45,.76)' : row.gir_ready === 'Да' ? 'rgba(22,128,91,.70)' : 'rgba(184,107,0,.72)';
+        c.ctx.fill();
+      }
+    }
+    function lgRenderKpis(rows) {
+      var total = rows.length || 1, ready = 0, problems = 0, success = 0, economic = 0;
+      for (var i = 0; i < rows.length; i += 1) {
+        if (lgIsGirReady(rows[i])) ready += 1;
+        if (lgRisk(rows[i]) >= 40) problems += 1;
+        if (rows[i].success === 'У' || rows[i].success === 'БУ' || rows[i].success === 'УУ') success += 1;
+        if (lgIsEconomicallySuccessful(rows[i])) economic += 1;
+      }
+      var ndnPlan = lgSum(rows, 'ndn_plan'), ndnFact = lgSum(rows, 'ndn_fact'), ndnDelta = ndnPlan ? (ndnFact / ndnPlan - 1) * 100 : 0;
+      var cards = [
+        ['Объекты в выборке', lgFmt(rows.length, 0), 'после фильтров', '--blue'],
+        ['НДН факт, млн т', lgFmt(ndnFact, 2), 'план ' + lgFmt(ndnPlan, 2), '--cyan'],
+        ['Отклонение НДН', lgPct(ndnDelta), lgFmt(ndnFact - ndnPlan, 2) + ' млн т', ndnDelta >= 0 ? '--green' : '--red'],
+        ['Готовность к ГИР', lgPct(ready / total * 100), ready + ' из ' + rows.length, '--green'],
+        ['Проблемные объекты', lgFmt(problems, 0), 'индекс риска >= 40', problems ? '--red' : '--green'],
+        ['Успешность', lgPct(success / total * 100), success + ' БУ/У/УУ', '--violet'],
+        ['Экономическая успешность', lgPct(economic / total * 100), economic + ' из ' + rows.length + ' NPV>0 = 1/0,5', '--green'],
+        ['Стоимость факт, млн руб', lgFmt(lgSum(rows, 'cost_fact'), 1), 'среднее откл. ' + lgPct(lgAvg(rows, 'cost_delta_pct')), '--amber']
+      ];
+      var html = '';
+      for (var j = 0; j < cards.length; j += 1) html += '<div class="kpi" style="--accent:var(' + cards[j][3] + ')"><span>' + cards[j][0] + '</span><b>' + cards[j][1] + '</b><small>' + cards[j][2] + '</small></div>';
+      document.getElementById('kpis').innerHTML = html;
+    }
+    function lgRenderInsights(rows) {
+      var byDo = lgGroup(rows, 'do').sort(function (a, b) { return b.ndn_fact - a.ndn_fact; });
+      var weak = lgGroup(rows, 'do').sort(function (a, b) { return a.ndn_delta_pct - b.ndn_delta_pct; });
+      var topProblem = lgTop(rows, 'risk_score', -1, 1)[0];
+      var byTriz = lgGroup(rows, 'triz').sort(function (a, b) { return b.ndn_fact - a.ndn_fact; });
+      document.getElementById('insights').innerHTML =
+        '<div class="insight"><b>' + lgHtml(byDo[0] ? byDo[0].label : '-') + '</b><p>максимальный НДН факт по ДО: ' + lgFmt(byDo[0] ? byDo[0].ndn_fact : 0, 2) + ' млн т</p></div>' +
+        '<div class="insight"><b>' + lgHtml(weak[0] ? weak[0].label : '-') + '</b><p>минимальное выполнение НДН: ' + lgPct(weak[0] ? weak[0].ndn_delta_pct : 0) + '</p></div>' +
+        '<div class="insight"><b>ПРБ ' + lgHtml(topProblem ? topProblem.well : '-') + '</b><p>самый высокий индекс риска: ' + lgFmt(topProblem ? topProblem.risk_score : 0, 0) + '</p></div>' +
+        '<div class="insight"><b>' + lgHtml(byTriz[0] ? byTriz[0].label : '-') + '</b><p>ведущий тип по НДН факт: ' + lgFmt(byTriz[0] ? byTriz[0].ndn_fact : 0, 2) + ' млн т</p></div>';
+    }
+    function lgRenderGir(rows) {
+      var groups = lgGroup(rows, 'gir_ready').sort(function (a, b) { return b.count - a.count; });
+      lgDrawDonut('girDonut', groups);
+      var html = '', total = rows.length || 1;
+      for (var i = 0; i < groups.length; i += 1) {
+        html += '<div style="margin-bottom:12px"><h3>' + lgHtml(groups[i].label) + ' <span class="badge">' + groups[i].count + '</span></h3><p>НДН факт: ' + lgFmt(groups[i].ndn_fact, 2) + ' млн т, доля объектов ' + lgPct(groups[i].count / total * 100) + '</p><div class="progress"><i style="--w:' + Math.min(100, groups[i].count / total * 100) + '%;--c:' + LEGACY_COLORS[i % LEGACY_COLORS.length] + '"></i></div></div>';
+      }
+      document.getElementById('girSummary').innerHTML = html;
+    }
+    function lgRenderProblems(rows) {
+      var scored = lgTop(rows, 'risk_score', -1, 12), html = '';
+      for (var i = 0; i < scored.length; i += 1) {
+        var row = scored[i], cls = row.risk_score >= 55 ? 'red' : row.risk_score >= 35 ? 'amber' : 'green';
+        var reasons = [];
+        if (row.gir_ready !== 'Да') reasons.push('ГИР: ' + (row.gir_ready || '-'));
+        if (lgN(row.ndn_delta_pct) < 0) reasons.push('НДН ' + lgPct(row.ndn_delta_pct));
+        if (lgN(row.cost_delta_pct) > 0) reasons.push('стоимость +' + lgPct(row.cost_delta_pct));
+        if (row.success === 'Н' || row.success === 'УУ') reasons.push('успешность ' + row.success);
+        html += '<div class="problem-card"><div class="problem-head"><h3>ПРБ ' + lgHtml(row.well) + ' · ' + lgHtml(row.do) + ' · ' + lgHtml(row.stage) + '</h3><span class="badge ' + cls + '">' + lgFmt(row.risk_score, 0) + '</span></div><p>' + lgHtml(reasons.slice(0, 4).join(' · ') || 'Без критических отклонений') + '</p><p style="margin-top:5px">НДН факт ' + lgFmt(row.ndn_fact, 2) + ' млн т, отложения: ' + lgHtml(row.deposition || '-') + '</p></div>';
+      }
+      document.getElementById('problemList').innerHTML = html;
+    }
+    function lgRenderHeatmap(rows) {
+      var dosGroups = lgGroup(rows, 'do').sort(function (a, b) { return b.count - a.count; }).slice(0, 8);
+      var statuses = ['Да', 'Частично', 'Нет'], max = 1, i, j, d, s, count;
+      for (i = 0; i < dosGroups.length; i += 1) {
+        for (j = 0; j < statuses.length; j += 1) {
+          count = 0;
+          for (var k = 0; k < rows.length; k += 1) if (rows[k].do === dosGroups[i].label && rows[k].gir_ready === statuses[j]) count += 1;
+          max = Math.max(max, count);
+        }
+      }
+      var html = '<div class="heat-row"><b>ДО</b><b>Да</b><b>Частично</b><b>Нет</b></div>';
+      for (i = 0; i < dosGroups.length; i += 1) {
+        d = dosGroups[i].label;
+        html += '<div class="heat-row"><b>' + lgHtml(d) + '</b>';
+        for (j = 0; j < statuses.length; j += 1) {
+          s = statuses[j]; var items = [];
+          for (var m = 0; m < rows.length; m += 1) if (rows[m].do === d && rows[m].gir_ready === s) items.push(rows[m]);
+          var alpha = .12 + items.length / max * .65;
+          html += '<div class="heat-cell" style="background:rgba(18,97,166,' + alpha + ')"><b>' + items.length + '</b>' + lgFmt(lgSum(items, 'ndn_fact'), 1) + ' млн т</div>';
+        }
+        html += '</div>';
+      }
+      document.getElementById('heatmap').innerHTML = html;
+    }
+    function lgRenderTable(rows) {
+      var sorted = rows.slice().sort(function (a, b) {
+        var av = a[legacyState.sortKey], bv = b[legacyState.sortKey];
+        if (typeof av === 'number' || typeof bv === 'number') return (lgN(av) - lgN(bv)) * legacyState.sortDir;
+        return String(av || '').localeCompare(String(bv || ''), 'ru') * legacyState.sortDir;
+      });
+      var html = '';
+      for (var i = 0; i < sorted.length; i += 1) {
+        var row = sorted[i];
+        html += '<tr><td>ПРБ ' + lgHtml(row.well) + '</td><td>' + lgHtml(row.do) + '</td><td>' + lgHtml(row.stage) + '</td><td>' + lgHtml(row.gir_ready) + '</td><td>' + lgFmt(row.ndn_fact, 3) + '</td><td>' + lgFmt(row.ndn_plan, 3) + '</td><td>' + lgPct(row.ndn_delta_pct) + '</td><td>' + lgFmt(row.cost_fact, 1) + '</td><td>' + lgPct(row.cost_delta_pct) + '</td><td>' + lgFmt(row.ngz_fact, 2) + '</td><td>' + lgHtml(row.success) + '</td><td>' + lgHtml(row.deposition) + '</td><td>' + lgHtml(row.driver) + '</td><td>' + lgHtml(row.triz) + '</td><td>' + lgFmt(row.risk_score, 0) + '</td><td style="text-align:left;max-width:360px;overflow:hidden;text-overflow:ellipsis">' + lgHtml([row.decision, row.comment].join(' / ')) + '</td></tr>';
+      }
+      document.querySelector('#detail tbody').innerHTML = html;
+    }
+    function lgRenderCharts(rows) {
+      var sliceKey = document.getElementById('ndnSlice').value || 'do';
+      var sliceGroups = lgGroup(rows, sliceKey).sort(function (a, b) { return b.ndn_fact - a.ndn_fact; }).slice(0, 10);
+      var sliceBars = [], si;
+      for (si = 0; si < sliceGroups.length; si += 1) sliceBars.push({ label: sliceGroups[si].label, value: sliceGroups[si].ndn_fact, value2: sliceGroups[si].ndn_plan, color: LEGACY_COLORS[si % LEGACY_COLORS.length] });
+      lgDrawBars('ndnSliceChart', sliceBars, 130, '#1261a6');
+      var doRows = lgGroup(rows, 'do').sort(function (a, b) { return b.ndn_fact - a.ndn_fact; }).slice(0, 10);
+      var bars = [], i;
+      for (i = 0; i < doRows.length; i += 1) bars.push({ label: doRows[i].label, value: doRows[i].ndn_fact, value2: doRows[i].ndn_plan });
+      lgDrawBars('doNdn', bars, 80, '#1261a6');
+      lgDrawScatter(rows);
+      var dep = lgGroup(rows, 'deposition').sort(function (a, b) { return b.ndn_fact - a.ndn_fact; }).slice(0, 8), depBars = [];
+      for (i = 0; i < dep.length; i += 1) depBars.push({ label: dep[i].label, value: dep[i].ndn_fact });
+      lgDrawBars('depChart', depBars, 118, '#00a3a3');
+      var triz = lgGroup(rows, 'triz').sort(function (a, b) { return b.ndn_fact - a.ndn_fact; }), trizBars = [];
+      for (i = 0; i < triz.length; i += 1) trizBars.push({ label: triz[i].label, value: triz[i].ndn_fact, color: LEGACY_COLORS[(i + 2) % LEGACY_COLORS.length] });
+      lgDrawBars('trizChart', trizBars, 122, '#16805b');
+    }
+    function lgRender() {
+      var rows = lgCurrentRows();
+      lgRenderKpis(rows); lgRenderInsights(rows); lgRenderGir(rows); lgRenderProblems(rows); lgRenderHeatmap(rows); lgRenderTable(rows); lgRenderCharts(rows);
+    }
+    function lgOn(el, type, handler) {
+      if (!el) return;
+      if (el.addEventListener) el.addEventListener(type, handler, false);
+      else if (el.attachEvent) el.attachEvent('on' + type, handler);
+    }
+    (function () {
+      lgFillSelect('do', lgUnique('do'), 'Все ДО');
+      lgFillSelect('stage', lgUnique('stage'), 'Все этапы');
+      lgFillGirMulti(lgUnique('gir_ready'));
+      lgFillSelect('triz', lgUnique('triz'), 'Все типы');
+      lgFillSelect('driver', lgUnique('driver'), 'Все пласты');
+      var ids = ['do','stage','triz','driver','search','ndnSlice'];
+      for (var i = 0; i < ids.length; i += 1) {
+        lgOn(document.getElementById(ids[i]), 'input', lgRender);
+        lgOn(document.getElementById(ids[i]), 'change', lgRender);
+      }
+      lgOn(document.getElementById('girToggle'), 'click', function () {
+        var filter = document.getElementById('girFilter');
+        filter.className = filter.className.indexOf(' open') >= 0 ? filter.className.replace(' open', '') : filter.className + ' open';
+      });
+      var headers = document.querySelectorAll ? document.querySelectorAll('th[data-sort]') : [];
+      for (var j = 0; j < headers.length; j += 1) lgOn(headers[j], 'click', function () {
+        var key = this.getAttribute('data-sort');
+        legacyState.sortDir = legacyState.sortKey === key ? -legacyState.sortDir : -1;
+        legacyState.sortKey = key;
+        lgRender();
+      });
+      lgOn(window, 'resize', lgRender);
+      lgRender();
+      window.__LEGACY_DASHBOARD_READY = true;
+    }());
+  </script>
+  <script type="module">
+    const DATA = {"records": [{"id": 1, "do": "Х", "well": "1", "stage": "Поиск", "gcos_plan": 1.0, "gcos_fact": 1.0, "cost_plan": 22.06763923622284, "cost_fact": 22.157250098775187, "ngz_plan": 12.314467005076141, "ngz_fact": 18.527918781725887, "ndn_plan": 0.9535211267605636, "ndn_fact": 0.8507042253521128, "ndn_delta_pct": -10.782865583456433, "gir_ready": "Да", "start_year": "2026", "structure_error": 0.05, "heff": ">Р10", "kp": "P10>Кп>P90", "contact_forecast": "Р50", "area": "", "nnt": ">Р10", "sgm": "0.5", "npv_positive": "1", "success": "У", "effectiveness": "1", "deposition": "КОНУС ВЫНОСА", "heff_method_1": "Инверсия", "heff_method_2": "Инверсия, Sum of positive amplitude", "rb_plan": "ВОРБ", "rb_fact": "ВОРБ (а)", "p10_p90_plan": "1.6-2", "p10_p90_fact": "", "ngz_class": "Р50", "kpr_eff_plan": "0.7", "kpr_eff_fact": "", "kpr_eff_delta_pct": null, "kpr_nnt_plan": "", "kpr_nnt_fact": "-", "kpr_nnt_delta_pct": null, "driver": "Ач", "triz": "Традиционный коллектор", "decision": "АИ и Vp/Vs", "test": "В испытании", "comment": "", "cost_delta_pct": 0.4060736247910812, "ngz_delta_pct": 50.45652218718442, "ndn_delta_abs": -0.10281690140845079}, {"id": 2, "do": "Х", "well": "2", "stage": "Поиск", "gcos_plan": 1.0, "gcos_fact": 1.0, "cost_plan": 15.803647379213475, "cost_fact": 15.906756222836826, "ngz_plan": 19.083756345177665, "ngz_fact": 24.274111675126903, "ndn_plan": 0.5295774647887325, "ndn_fact": 0.5584507042253521, "ndn_delta_pct": 5.45212765957446, "gir_ready": "Да", "start_year": "2025", "structure_error": 1.04, "heff": ">Р10", "kp": "P10>Кп>P90", "contact_forecast": "Р50", "area": "P10>S>P50", "nnt": ">Р10", "sgm": "0.5", "npv_positive": "1", "success": "У", "effectiveness": "1", "deposition": "М-М БАРЫ", "heff_method_1": "АИ и Vp/Vs", "heff_method_2": "АИ и Vp/Vs", "rb_plan": "ВОРБ", "rb_fact": "ВОРБ", "p10_p90_plan": "1.4", "p10_p90_fact": "1.4", "ngz_class": ">P10", "kpr_eff_plan": "1.3", "kpr_eff_fact": "", "kpr_eff_delta_pct": null, "kpr_nnt_plan": "", "kpr_nnt_fact": "-", "kpr_nnt_delta_pct": null, "driver": "Неоком", "triz": "Традиционный коллектор", "decision": "АИ и Vp/Vs", "test": "+", "comment": "", "cost_delta_pct": 0.6524370048838879, "ngz_delta_pct": 27.197765660327168, "ndn_delta_abs": 0.02887323943661968}, {"id": 3, "do": "Х", "well": "3", "stage": "Разведка", "gcos_plan": 1.0, "gcos_fact": 1.0, "cost_plan": 28.790623687608928, "cost_fact": 29.74813133866543, "ngz_plan": 100.50761421319795, "ngz_fact": 93.40101522842639, "ndn_plan": 3.098591549295775, "ndn_fact": 2.95774647887324, "ndn_delta_pct": -4.545454545454539, "gir_ready": "Да", "start_year": "2026", "structure_error": 0.94, "heff": "P10>Нэф>P50", "kp": "P10>Кп>P90", "contact_forecast": "Р50", "area": "P10>S>P50", "nnt": "P10>ННТ>P90", "sgm": "1", "npv_positive": "1", "success": "БУ", "effectiveness": "1", "deposition": "КОНУС ВЫНОСА", "heff_method_1": "АИ и Vp/Vs", "heff_method_2": "АИ и Vp/Vs", "rb_plan": "ВОРБ", "rb_fact": "ВОРБ (а)", "p10_p90_plan": "1.8", "p10_p90_fact": "", "ngz_class": "Р50", "kpr_eff_plan": "1.6", "kpr_eff_fact": "", "kpr_eff_delta_pct": null, "kpr_nnt_plan": "", "kpr_nnt_fact": "-", "kpr_nnt_delta_pct": null, "driver": "Ач", "triz": "Традиционный коллектор", "decision": "АИ и Vp/Vs", "test": "В испытании", "comment": "", "cost_delta_pct": 3.3257621003486726, "ngz_delta_pct": -7.07070707070706, "ndn_delta_abs": -0.14084507042253502}, {"id": 4, "do": "Х", "well": "4", "stage": "Поиск", "gcos_plan": 1.0, "gcos_fact": 1.0, "cost_plan": 18.877457557866457, "cost_fact": 18.625361763935206, "ngz_plan": 25.63451776649746, "ngz_fact": 22.33502538071066, "ndn_plan": 1.4084507042253522, "ndn_fact": 1.1267605633802817, "ndn_delta_pct": -20.000000000000004, "gir_ready": "Да", "start_year": "2026", "structure_error": 0.74, "heff": "P10>Нэф>P50", "kp": "P10>Кп>P90", "contact_forecast": "Р10", "area": "", "nnt": ">Р10", "sgm": "1", "npv_positive": "1", "success": "БУ", "effectiveness": "1", "deposition": "КОНУС ВЫНОСА", "heff_method_1": "Инверсия", "heff_method_2": "Инверсия, Sum of positive amplitude", "rb_plan": "ВОРБ", "rb_fact": "ВОРБ (а)", "p10_p90_plan": "4.1", "p10_p90_fact": "", "ngz_class": "Р90-Р50", "kpr_eff_plan": "0.7", "kpr_eff_fact": "", "kpr_eff_delta_pct": null, "kpr_nnt_plan": "", "kpr_nnt_fact": "-", "kpr_nnt_delta_pct": null, "driver": "Ач", "triz": "Традиционный коллектор", "decision": "АИ и Vp/Vs", "test": "В испытании", "comment": "", "cost_delta_pct": -1.3354329795656095, "ngz_delta_pct": -12.871287128712861, "ndn_delta_abs": -0.2816901408450705}, {"id": 5, "do": "Х", "well": "5", "stage": "Разведка", "gcos_plan": 1.0, "gcos_fact": 1.0, "cost_plan": 21.076515196801466, "cost_fact": 20.161407370809957, "ngz_plan": 41.37055837563452, "ngz_fact": 41.37055837563452, "ndn_plan": 1.267605633802817, "ndn_fact": 1.256056338028169, "ndn_delta_pct": -0.9111111111111134, "gir_ready": "Да", "start_year": "2026", "structure_error": 0.1, "heff": "P50>Нэф>P90", "kp": "P10>Кп>P90", "contact_forecast": "Р50", "area": "", "nnt": "", "sgm": "1", "npv_positive": "1", "success": "БУ", "effectiveness": "1", "deposition": "КОНУС + М-М БАРЫ", "heff_method_1": "Инверсия", "heff_method_2": "Инверсия", "rb_plan": "ВОРБ", "rb_fact": "ВОРБ (а)", "p10_p90_plan": "2.1-3.4", "p10_p90_fact": "", "ngz_class": "Р50", "kpr_eff_plan": "1.4", "kpr_eff_fact": "", "kpr_eff_delta_pct": null, "kpr_nnt_plan": "", "kpr_nnt_fact": "-", "kpr_nnt_delta_pct": null, "driver": "Неоком+Ач", "triz": "Традиционный коллектор", "decision": "АИ и Vp/Vs", "test": "В испытании", "comment": "", "cost_delta_pct": -4.341836482201689, "ngz_delta_pct": 0.0, "ndn_delta_abs": -0.011549295774647916}, {"id": 6, "do": "Х", "well": "6", "stage": "Поиск", "gcos_plan": 1.0, "gcos_fact": 1.0, "cost_plan": 9.296483603318848, "cost_fact": 10.001007700908731, "ngz_plan": 6.85279187817259, "ngz_fact": 11.134517766497462, "ndn_plan": 0.057323943661971834, "ndn_fact": 0.057323943661971834, "ndn_delta_pct": 0.0, "gir_ready": "Да", "start_year": "2026", "structure_error": 1.2, "heff": "<P90", "kp": "P10>Кп>P90", "contact_forecast": "<P90", "area": "", "nnt": "", "sgm": "0.5", "npv_positive": "1", "success": "У", "effectiveness": "1", "deposition": "РУСЛА", "heff_method_1": "Прогноз СРР", "heff_method_2": "Прогноз СРР", "rb_plan": "ВОРБ", "rb_fact": "ВОРБ (а)", "p10_p90_plan": "1.9", "p10_p90_fact": "", "ngz_class": "Р50", "kpr_eff_plan": "-", "kpr_eff_fact": "", "kpr_eff_delta_pct": null, "kpr_nnt_plan": "", "kpr_nnt_fact": "-", "kpr_nnt_delta_pct": null, "driver": "Тюменка", "triz": "ТРИЗ", "decision": "ФАЦИИ ПОЯСОВ МЕАНДРИРОВАНИЯ, ПРИУРОЧЕННЫЕ К СТРУКТУРНЫМ ПОДНЯТИЯМ", "test": "В испытании", "comment": "", "cost_delta_pct": 7.578393375946679, "ngz_delta_pct": 62.48148148148145, "ndn_delta_abs": 0.0}, {"id": 7, "do": "Х", "well": "7", "stage": "Поиск", "gcos_plan": 0.8, "gcos_fact": 1.0, "cost_plan": 21.216910312129595, "cost_fact": 18.639745292374556, "ngz_plan": 16.243654822335028, "ngz_fact": 5.0761421319796955, "ndn_plan": 1.5492957746478875, "ndn_fact": 0.8450704225352114, "ndn_delta_pct": -45.45454545454545, "gir_ready": "Частично", "start_year": "2025", "structure_error": 0.4, "heff": "P10>Нэф>P50", "kp": "P10>Кп>P90", "contact_forecast": "<P90", "area": "<P90", "nnt": "P10>ННТ>P90", "sgm": "0.5", "npv_positive": "1", "success": "У", "effectiveness": "1", "deposition": "ДЕЛЬТА", "heff_method_1": "Mean amplitude", "heff_method_2": "Mean amplitude", "rb_plan": "ВОРБ", "rb_fact": "ВОРБ (а)", "p10_p90_plan": "2.1", "p10_p90_fact": "", "ngz_class": "<Р90", "kpr_eff_plan": "1.7", "kpr_eff_fact": "0.93", "kpr_eff_delta_pct": -45.29411764705882, "kpr_nnt_plan": "", "kpr_nnt_fact": "-", "kpr_nnt_delta_pct": null, "driver": "Неоком", "triz": "Традиционный коллектор", "decision": "АИ и Vp/Vs", "test": "В испытании", "comment": "", "cost_delta_pct": -12.146749841713234, "ngz_delta_pct": -68.75, "ndn_delta_abs": -0.7042253521126761}, {"id": 8, "do": "Х", "well": "8", "stage": "Поиск", "gcos_plan": 0.64, "gcos_fact": 0.0, "cost_plan": 19.530807940339788, "cost_fact": 17.90786526933228, "ngz_plan": 9.390862944162437, "ngz_fact": 0.0, "ndn_plan": 0.4225352112676057, "ndn_fact": 0.0, "ndn_delta_pct": -100.0, "gir_ready": "Нет", "start_year": "", "structure_error": 0.78, "heff": "нет кол-ра", "kp": "-", "contact_forecast": "-", "area": "-", "nnt": "-", "sgm": "0", "npv_positive": "0", "success": "Н", "effectiveness": "0", "deposition": "ДЕЛЬТА", "heff_method_1": "Sum of magnitude", "heff_method_2": "Sum of magnitude", "rb_plan": "ВОРБ", "rb_fact": "Неуспех ПО", "p10_p90_plan": "2.5", "p10_p90_fact": "-", "ngz_class": "-", "kpr_eff_plan": "", "kpr_eff_fact": "", "kpr_eff_delta_pct": null, "kpr_nnt_plan": "", "kpr_nnt_fact": "", "kpr_nnt_delta_pct": null, "driver": "Неоком", "triz": "Традиционный коллектор", "decision": "", "test": "Неуспех ПО", "comment": "", "cost_delta_pct": -8.309654551747503, "ngz_delta_pct": -100.0, "ndn_delta_abs": -0.4225352112676057}, {"id": 9, "do": "Н", "well": "9", "stage": "Поиск", "gcos_plan": 0.86, "gcos_fact": 0.0, "cost_plan": 29.158435401027265, "cost_fact": 35.6775977874358, "ngz_plan": 42.639593908629436, "ngz_fact": 0.0, "ndn_plan": 2.2535211267605635, "ndn_fact": 0.0, "ndn_delta_pct": -100.0, "gir_ready": "Нет", "start_year": "", "structure_error": 0.73, "heff": "P50>Нэф>P90", "kp": "P10>Кп>P90", "contact_forecast": "<P90", "area": "вода", "nnt": "вода", "sgm": "0.5", "npv_positive": "0", "success": "Н", "effectiveness": "0", "deposition": "ДЕЛЬТА", "heff_method_1": "от Ноб", "heff_method_2": "от Ноб", "rb_plan": "ВОРБ", "rb_fact": "Неуспех ПО", "p10_p90_plan": "12", "p10_p90_fact": "-", "ngz_class": "-", "kpr_eff_plan": "", "kpr_eff_fact": "", "kpr_eff_delta_pct": null, "kpr_nnt_plan": "", "kpr_nnt_fact": "", "kpr_nnt_delta_pct": null, "driver": "Верх юра", "triz": "Традиционный коллектор", "decision": "наличие структуры", "test": "Неуспех ПО", "comment": "", "cost_delta_pct": 22.357723577235777, "ngz_delta_pct": -100.0, "ndn_delta_abs": -2.2535211267605635}, {"id": 10, "do": "Н", "well": "10", "stage": "Поиск", "gcos_plan": 0.75, "gcos_fact": 1.0, "cost_plan": 38.24575266693007, "cost_fact": 51.550296325563025, "ngz_plan": 64.72081218274111, "ngz_fact": 54.06091370558376, "ndn_plan": 2.016901408450704, "ndn_fact": 5.494366197183099, "ndn_delta_pct": 172.41620111731842, "gir_ready": "Частично", "start_year": "2026", "structure_error": 2.5, "heff": ">Р10", "kp": "P10>Кп>P90", "contact_forecast": "Р10", "area": "P10>S>P50", "nnt": ">Р10", "sgm": "0.5", "npv_positive": "1", "success": "У", "effectiveness": "1", "deposition": "ДЕЛЬТА", "heff_method_1": "от Ноб", "heff_method_2": "от Ноб", "rb_plan": "ВОРБ", "rb_fact": "Неуспех ПО", "p10_p90_plan": "20", "p10_p90_fact": "2.4", "ngz_class": "Р10-Р50", "kpr_eff_plan": "5", "kpr_eff_fact": "11.1", "kpr_eff_delta_pct": 122.0, "kpr_nnt_plan": "18", "kpr_nnt_fact": "249", "kpr_nnt_delta_pct": 1283.3333333333335, "driver": "Верх юра", "triz": "Традиционный коллектор", "decision": "наличие структуры", "test": "+", "comment": "", "cost_delta_pct": 34.786983471074386, "ngz_delta_pct": -16.470588235294116, "ndn_delta_abs": 3.4774647887323944}, {"id": 11, "do": "Н", "well": "11", "stage": "Разведка", "gcos_plan": 1.0, "gcos_fact": 1.0, "cost_plan": 5.807981035163968, "cost_fact": 6.361122086131965, "ngz_plan": 5.799746192893401, "ngz_fact": 7.535532994923858, "ndn_plan": 0.32676056338028175, "ndn_fact": 0.6319718309859146, "ndn_delta_pct": 93.4051724137928, "gir_ready": "Да", "start_year": "2025", "structure_error": 0.62, "heff": "другой пласт", "kp": "-", "contact_forecast": "-", "area": "-", "nnt": "-", "sgm": "0", "npv_positive": "1", "success": "У", "effectiveness": "1", "deposition": "П-О КАНАЛЫ", "heff_method_1": "Интерполяция", "heff_method_2": "Интерполяция", "rb_plan": "ВОРБ", "rb_fact": "ДО", "p10_p90_plan": "2", "p10_p90_fact": "-", "ngz_class": "другой пласт", "kpr_eff_plan": "-", "kpr_eff_fact": "7", "kpr_eff_delta_pct": null, "kpr_nnt_plan": "", "kpr_nnt_fact": "-", "kpr_nnt_delta_pct": null, "driver": "Тюменка", "triz": "ТРИЗ", "decision": "бар в Ю1-1 по атрибутам+русловое тело по Ю2-4", "test": "+", "comment": "Был драйвер Ю1, в добычу пошла Ю2-Ю3", "cost_delta_pct": 9.523809523809534, "ngz_delta_pct": 29.928668329613583, "ndn_delta_abs": 0.30521126760563283}, {"id": 12, "do": "Н", "well": "12", "stage": "Разведка", "gcos_plan": 1.0, "gcos_fact": 1.0, "cost_plan": 7.34887396286053, "cost_fact": 6.1240616357171085, "ngz_plan": 4.314720812182741, "ngz_fact": 7.9822335025380715, "ndn_plan": 0.19436619718309864, "ndn_fact": 1.2098591549295776, "ndn_delta_pct": 522.463768115942, "gir_ready": "Да", "start_year": "2026", "structure_error": 0.5, "heff": ">Р10", "kp": "P10>Кп>P90", "contact_forecast": "P90", "area": "P50>S>P90", "nnt": "P10>ННТ>P90", "sgm": "0.5", "npv_positive": "1", "success": "У", "effectiveness": "1", "deposition": "ДЕЛЬТА", "heff_method_1": "Интерполяция", "heff_method_2": "Интерполяция", "rb_plan": "ВОРБ", "rb_fact": "ДО", "p10_p90_plan": "1.6", "p10_p90_fact": "-", "ngz_class": ">P10", "kpr_eff_plan": "7.3", "kpr_eff_fact": "10", "kpr_eff_delta_pct": 36.986301369863014, "kpr_nnt_plan": "39", "kpr_nnt_fact": "45", "kpr_nnt_delta_pct": 15.384615384615385, "driver": "Верх юра", "triz": "Традиционный коллектор", "decision": "структурно-тектоническая ловушка с хорошим коллектором", "test": "", "comment": "Без испытаний, сразу в добычу куст", "cost_delta_pct": -16.666666666666664, "ngz_delta_pct": 85.00000000000001, "ndn_delta_abs": 1.015492957746479}, {"id": 13, "do": "В", "well": "13", "stage": "Поиск", "gcos_plan": 0.9, "gcos_fact": 1.0, "cost_plan": 22.42781509284868, "cost_fact": 22.745950217305417, "ngz_plan": 12.182741116751268, "ngz_fact": 13.70558375634518, "ndn_plan": 1.830985915492958, "ndn_fact": 1.830985915492958, "ndn_delta_pct": 0.0, "gir_ready": "Нет", "start_year": "2027", "structure_error": 1.0, "heff": "P10>Нэф>P90", "kp": "P10>Кп>P90", "contact_forecast": "<P90", "area": "<P90", "nnt": "P10>ННТ>P90", "sgm": "0.5", "npv_positive": "0.5", "success": "УУ", "effectiveness": "0", "deposition": "ДЕЛЬТА", "heff_method_1": "Прогноз СРР", "heff_method_2": "Комплексный атрибут", "rb_plan": "ВОРБ", "rb_fact": "ДО", "p10_p90_plan": "2.9", "p10_p90_fact": "", "ngz_class": "Р50", "kpr_eff_plan": "0.8", "kpr_eff_fact": "-", "kpr_eff_delta_pct": null, "kpr_nnt_plan": "", "kpr_nnt_fact": "-", "kpr_nnt_delta_pct": null, "driver": "Верх юра", "triz": "Традиционный коллектор", "decision": "", "test": "В испытании", "comment": "Недоиспытана в следствии ЗКЦ с нижележащих интервалов", "cost_delta_pct": 1.4184846947404184, "ngz_delta_pct": 12.500000000000021, "ndn_delta_abs": 0.0}, {"id": 14, "do": "С-М", "well": "14", "stage": "Поиск", "gcos_plan": 0.81, "gcos_fact": 0.0, "cost_plan": 17.53732159712367, "cost_fact": 16.997234294745162, "ngz_plan": 6.192893401015229, "ngz_fact": 0.0, "ndn_plan": 0.9619718309859157, "ndn_fact": 0.0, "ndn_delta_pct": -100.0, "gir_ready": "Нет", "start_year": "", "structure_error": 2.3, "heff": "Р50", "kp": "-", "contact_forecast": "-", "area": "-", "nnt": "вода", "sgm": "0.5", "npv_positive": "0", "success": "Н", "effectiveness": "0", "deposition": "РУСЛА", "heff_method_1": "Интерполяция", "heff_method_2": "Интерполяция", "rb_plan": "ВОРБ", "rb_fact": "Неуспех ПО", "p10_p90_plan": "25", "p10_p90_fact": "-", "ngz_class": "другой пласт", "kpr_eff_plan": "", "kpr_eff_fact": "", "kpr_eff_delta_pct": null, "kpr_nnt_plan": "", "kpr_nnt_fact": "", "kpr_nnt_delta_pct": null, "driver": "Верх юра", "triz": "Традиционный коллектор", "decision": "ярко выраженная аномалия в виде речного русла", "test": "Неуспех", "comment": "", "cost_delta_pct": -3.079645311785162, "ngz_delta_pct": -100.0, "ndn_delta_abs": -0.9619718309859157}, {"id": 15, "do": "С-М", "well": "15", "stage": "Разведка", "gcos_plan": 1.0, "gcos_fact": 1.0, "cost_plan": 21.179770841564604, "cost_fact": 20.77198735677598, "ngz_plan": 14.720812182741117, "ngz_fact": 14.720812182741117, "ndn_plan": 1.268323943661972, "ndn_fact": 1.2032816901408452, "ndn_delta_pct": -5.12820512820513, "gir_ready": "Да", "start_year": "2026", "structure_error": 1.9, "heff": "P50>Нэф>P90", "kp": "P10>Кп>P90", "contact_forecast": "Р10-Р90", "area": "Р50", "nnt": "<P90", "sgm": "1", "npv_positive": "1", "success": "У", "effectiveness": "1", "deposition": "П-М ОБСТАНОВКИ", "heff_method_1": "Русла+ГСР", "heff_method_2": "Русла+ГСР", "rb_plan": "ВОРБ", "rb_fact": "ДО", "p10_p90_plan": "1.7-3.5", "p10_p90_fact": "-", "ngz_class": "Р90", "kpr_eff_plan": "5.6", "kpr_eff_fact": "13", "kpr_eff_delta_pct": 132.14285714285717, "kpr_nnt_plan": "28", "kpr_nnt_fact": "42", "kpr_nnt_delta_pct": 50.0, "driver": "Тюменка", "triz": "ТРИЗ", "decision": "перевод в промыш категорию", "test": "+", "comment": "", "cost_delta_pct": -1.9253441778905422, "ngz_delta_pct": 0.0, "ndn_delta_abs": -0.0650422535211268}, {"id": 16, "do": "С-М", "well": "16", "stage": "Поиск", "gcos_plan": 0.87, "gcos_fact": 1.0, "cost_plan": 12.74239431054919, "cost_fact": 8.530975898854209, "ngz_plan": 18.78172588832487, "ngz_fact": 21.927903321394542, "ndn_plan": 2.9253521126760567, "ndn_fact": 1.352112676056338, "ndn_delta_pct": -53.779489648531545, "gir_ready": "Да", "start_year": "2026", "structure_error": 2.0, "heff": "P10>Нэф>P50", "kp": "P10>Кп>P90", "contact_forecast": "", "area": "", "nnt": ">Р10", "sgm": "-", "npv_positive": "1", "success": "У", "effectiveness": "1", "deposition": "П-О КАНАЛЫ", "heff_method_1": "RMS", "heff_method_2": "от Ноб в руслах, вне русел - от RMS", "rb_plan": "ВОРБ", "rb_fact": "-", "p10_p90_plan": "2.7", "p10_p90_fact": "-", "ngz_class": "-", "kpr_eff_plan": "8.5", "kpr_eff_fact": "0.84", "kpr_eff_delta_pct": -90.11764705882354, "kpr_nnt_plan": "94", "kpr_nnt_fact": "17", "kpr_nnt_delta_pct": -81.91489361702128, "driver": "Тюменка", "triz": "ТРИЗ", "decision": "русло по данным 3Д СРР", "test": "+", "comment": "", "cost_delta_pct": -33.05044804812254, "ngz_delta_pct": 16.751269035533124, "ndn_delta_abs": -1.5732394366197187}, {"id": 17, "do": "С-М", "well": "17", "stage": "Разведка", "gcos_plan": 1.0, "gcos_fact": 1.0, "cost_plan": 3.476886606084552, "cost_fact": 3.1394705649940735, "ngz_plan": 2.446700507614213, "ngz_fact": 5.106598984771574, "ndn_plan": 0.6070422535211268, "ndn_fact": 1.8647887323943664, "ndn_delta_pct": 207.19257540603246, "gir_ready": "Да", "start_year": "2026", "structure_error": 1.0, "heff": "P10>Нэф>P50", "kp": "P10>Кп>P90", "contact_forecast": "Р10-Р90", "area": "Р10", "nnt": "Р50", "sgm": "1", "npv_positive": "1", "success": "БУ", "effectiveness": "1", "deposition": "П-О РАВНИНА", "heff_method_1": "Интерполяция", "heff_method_2": "Интерполяция", "rb_plan": "ДО", "rb_fact": "ДО", "p10_p90_plan": "", "p10_p90_fact": "-", "ngz_class": "+100% от Р50_пл", "kpr_eff_plan": "2.7", "kpr_eff_fact": "5.6", "kpr_eff_delta_pct": 107.40740740740738, "kpr_nnt_plan": "11", "kpr_nnt_fact": "17", "kpr_nnt_delta_pct": 54.54545454545454, "driver": "Верх юра", "triz": "Традиционный коллектор", "decision": "", "test": "+", "comment": "", "cost_delta_pct": -9.704545454545466, "ngz_delta_pct": 108.7136929460581, "ndn_delta_abs": 1.2577464788732395}, {"id": 18, "do": "С-М", "well": "18", "stage": "Разведка", "gcos_plan": 1.0, "gcos_fact": 1.0, "cost_plan": 3.7139470564994075, "cost_fact": 4.425128407743975, "ngz_plan": 3.2614213197969546, "ngz_fact": 2.6878172588832485, "ndn_plan": 1.117043661971831, "ndn_fact": 0.0, "ndn_delta_pct": -100.0, "gir_ready": "Нет", "start_year": "", "structure_error": 2.0, "heff": ">Р10", "kp": "P10>Кп>P90", "contact_forecast": "Р50", "area": "Р50", "nnt": "P10>ННТ>P90", "sgm": "0.5", "npv_positive": "0", "success": "УУ", "effectiveness": "0", "deposition": "П-М ОБСТАНОВКИ", "heff_method_1": "Интерполяция", "heff_method_2": "Интерполяция", "rb_plan": "ДО", "rb_fact": "ДО", "p10_p90_plan": "", "p10_p90_fact": "-", "ngz_class": "-18% от Р50_пл", "kpr_eff_plan": "4.2", "kpr_eff_fact": "0.1", "kpr_eff_delta_pct": -97.61904761904762, "kpr_nnt_plan": "3", "kpr_nnt_fact": "0.64", "kpr_nnt_delta_pct": -78.66666666666666, "driver": "Тюменка", "triz": "ТРИЗ", "decision": "Скв. данные, граница съемки 3Д СРР, невозможно проследить русло", "test": "+", "comment": "План - пласт Ю2+Ю3, факт - Ю2", "cost_delta_pct": 19.14893617021278, "ngz_delta_pct": -17.58754863813231, "ndn_delta_abs": -1.117043661971831}, {"id": 19, "do": "С-М", "well": "19", "stage": "Разведка", "gcos_plan": 1.0, "gcos_fact": 1.0, "cost_plan": 3.476886606084552, "cost_fact": 3.0829711576451997, "ngz_plan": 3.5812182741116754, "ngz_fact": 12.230964467005077, "ndn_plan": 0.695774647887324, "ndn_fact": 2.054929577464789, "ndn_delta_pct": 195.34412955465586, "gir_ready": "Да", "start_year": "2026", "structure_error": 0.4, "heff": "P10>Нэф>P50", "kp": "P10>Кп>P90", "contact_forecast": "Р50", "area": "Р50", "nnt": "Р10", "sgm": "1", "npv_positive": "1", "success": "БУ", "effectiveness": "1", "deposition": "РУСЛА", "heff_method_1": "RMS", "heff_method_2": "2 разных зависимости от Ноб: в руслах, вне русел", "rb_plan": "ДО", "rb_fact": "ДО", "p10_p90_plan": "", "p10_p90_fact": "-", "ngz_class": "+240% от Р50_пл", "kpr_eff_plan": "5", "kpr_eff_fact": "0.77", "kpr_eff_delta_pct": -84.60000000000001, "kpr_nnt_plan": "102", "kpr_nnt_fact": "16", "kpr_nnt_delta_pct": -84.31372549019608, "driver": "Тюменка", "triz": "ТРИЗ", "decision": "", "test": "+", "comment": "", "cost_delta_pct": -11.329545454545453, "ngz_delta_pct": 241.53082919914954, "ndn_delta_abs": 1.359154929577465}, {"id": 20, "do": "С-М", "well": "20", "stage": "Разведка", "gcos_plan": 1.0, "gcos_fact": 1.0, "cost_plan": null, "cost_fact": 12.13314895298301, "ngz_plan": 7.6142131979695495, "ngz_fact": 7.614213197969543, "ndn_plan": 0.6281690140845071, "ndn_fact": 0.8173169014084508, "ndn_delta_pct": 30.11098654708521, "gir_ready": "Да", "start_year": "2026", "structure_error": 0.73, "heff": "<P90", "kp": "P10>Кп>P90", "contact_forecast": "Р50", "area": "", "nnt": "", "sgm": "0.5", "npv_positive": "1", "success": "У", "effectiveness": "1", "deposition": "ДЕЛЬТОВАЯ РАВНИНА", "heff_method_1": "RMS", "heff_method_2": "RMS", "rb_plan": "ДО", "rb_fact": "ДО", "p10_p90_plan": "", "p10_p90_fact": "-", "ngz_class": "-74% от Р50_пл", "kpr_eff_plan": "1", "kpr_eff_fact": "0.43", "kpr_eff_delta_pct": -57.00000000000001, "kpr_nnt_plan": "10", "kpr_nnt_fact": "2", "kpr_nnt_delta_pct": -80.0, "driver": "Тюменка", "triz": "ТРИЗ", "decision": "", "test": "В испытании.", "comment": "Не подтверждение ВНК в Ю1 (<Р90)", "cost_delta_pct": null, "ngz_delta_pct": -7.771561172376096e-14, "ndn_delta_abs": 0.18914788732394372}, {"id": 21, "do": "С", "well": "21", "stage": "Разведка", "gcos_plan": 1.0, "gcos_fact": 1.0, "cost_plan": 33.18846305807981, "cost_fact": 34.39030002449625, "ngz_plan": 69.03553299492386, "ngz_fact": 62.944162436548226, "ndn_plan": 1.6901408450704227, "ndn_fact": 1.4084507042253522, "ndn_delta_pct": -16.666666666666668, "gir_ready": "Нет", "start_year": "2028", "structure_error": 0.1, "heff": "Р50", "kp": "P10>Кп>P90", "contact_forecast": "P90", "area": "P10>S>P50", "nnt": "Р50", "sgm": "1", "npv_positive": "-", "success": "УУ", "effectiveness": "-", "deposition": "РУСЛА", "heff_method_1": "RMS", "heff_method_2": "RMS", "rb_plan": "ВОРБ", "rb_fact": "ДО", "p10_p90_plan": "3.1", "p10_p90_fact": "-", "ngz_class": "Р90-Р50", "kpr_eff_plan": "", "kpr_eff_fact": "", "kpr_eff_delta_pct": null, "kpr_nnt_plan": "", "kpr_nnt_fact": "-", "kpr_nnt_delta_pct": null, "driver": "Тюменка", "triz": "ТРИЗ", "decision": "Заложение скважин в русла по RGB", "test": "В испытании.", "comment": "", "cost_delta_pct": 3.6212492404761987, "ngz_delta_pct": -8.823529411764696, "ndn_delta_abs": -0.2816901408450705}, {"id": 22, "do": "С", "well": "22", "stage": "Поиск", "gcos_plan": 0.94, "gcos_fact": 1.0, "cost_plan": 10.99960489924931, "cost_fact": 12.435289436521257, "ngz_plan": 18.225888324873097, "ngz_fact": 22.33502538071066, "ndn_plan": 2.394366197183099, "ndn_fact": 1.9746478873239437, "ndn_delta_pct": -17.529411764705895, "gir_ready": "Да", "start_year": "2025", "structure_error": 0.5, "heff": "P10>Нэф>P50", "kp": "P10>Кп>P90", "contact_forecast": "Р10-Р90", "area": "P50>S>P90", "nnt": ">P10", "sgm": "1", "npv_positive": "1", "success": "БУ", "effectiveness": "1", "deposition": "ДЕЛЬТА", "heff_method_1": "Vp/Vs", "heff_method_2": "Vp/Vs", "rb_plan": "ВОРБ", "rb_fact": "ДО", "p10_p90_plan": "5.1", "p10_p90_fact": "-", "ngz_class": "Р90-Р50", "kpr_eff_plan": "17", "kpr_eff_fact": "19", "kpr_eff_delta_pct": 11.76470588235294, "kpr_nnt_plan": "133", "kpr_nnt_fact": "467", "kpr_nnt_delta_pct": 251.1278195488722, "driver": "Неоком", "triz": "Традиционный коллектор", "decision": "", "test": "+", "comment": "", "cost_delta_pct": 13.052146421822197, "ngz_delta_pct": 22.545606461495616, "ndn_delta_abs": -0.41971830985915526}, {"id": 23, "do": "С", "well": "23", "stage": "Поиск", "gcos_plan": 0.45, "gcos_fact": 1.0, "cost_plan": 14.302647175029634, "cost_fact": 16.284863233504545, "ngz_plan": 13.70558375634518, "ngz_fact": 7.614213197969543, "ndn_plan": 0.4225352112676057, "ndn_fact": 0.8859154929577465, "ndn_delta_pct": 109.66666666666664, "gir_ready": "Да", "start_year": "2026", "structure_error": 0.2, "heff": "P90", "kp": "P10>Кп>P90", "contact_forecast": "Р50", "area": "P50>S>P90", "nnt": "P10>ННТ>P50", "sgm": "1", "npv_positive": "1", "success": "БУ", "effectiveness": "1", "deposition": "МЕАНДР ОТЛ-Я", "heff_method_1": "Vp/Vs", "heff_method_2": "Vp/Vs", "rb_plan": "ВОРБ", "rb_fact": "ДО", "p10_p90_plan": "7.6", "p10_p90_fact": "-", "ngz_class": "Р10-Р50", "kpr_eff_plan": "16.5", "kpr_eff_fact": "17", "kpr_eff_delta_pct": 3.0303030303030303, "kpr_nnt_plan": "152", "kpr_nnt_fact": "229", "kpr_nnt_delta_pct": 50.6578947368421, "driver": "Неоком", "triz": "Традиционный коллектор", "decision": "Vp/Vs", "test": "+", "comment": "", "cost_delta_pct": 13.859085204419896, "ngz_delta_pct": -44.44444444444445, "ndn_delta_abs": 0.46338028169014084}, {"id": 24, "do": "С", "well": "24", "stage": "Поиск", "gcos_plan": 0.64, "gcos_fact": 1.0, "cost_plan": 7.178980640063216, "cost_fact": 7.574212475701304, "ngz_plan": 8.629441624365482, "ngz_fact": 8.629441624365482, "ndn_plan": 0.7605633802816902, "ndn_fact": 0.35211267605633806, "ndn_delta_pct": -53.70370370370371, "gir_ready": "Нет", "start_year": "", "structure_error": 1.83, "heff": "P10>Нэф>P50", "kp": "P10>Кп>P90", "contact_forecast": "Р50", "area": "Р10-Р90", "nnt": "Р90", "sgm": "1", "npv_positive": "0", "success": "У", "effectiveness": "0", "deposition": "КОНУС ВЫНОСА", "heff_method_1": "RMS", "heff_method_2": "RMS", "rb_plan": "ВОРБ", "rb_fact": "ДО", "p10_p90_plan": "-", "p10_p90_fact": "-", "ngz_class": "-", "kpr_eff_plan": "0.35", "kpr_eff_fact": "0.3", "kpr_eff_delta_pct": -14.285714285714283, "kpr_nnt_plan": "3.48", "kpr_nnt_fact": "1.92", "kpr_nnt_delta_pct": -44.827586206896555, "driver": "Ач", "triz": "ТРИЗ", "decision": "RMS", "test": "Необходим РИР.", "comment": "", "cost_delta_pct": 5.505403280132093, "ngz_delta_pct": 0.0, "ndn_delta_abs": -0.4084507042253522}, {"id": 25, "do": "С", "well": "25", "stage": "Разведка", "gcos_plan": 1.0, "gcos_fact": 1.0, "cost_plan": 18.79494271039115, "cost_fact": 22.172415532595814, "ngz_plan": 44.67005076142132, "ngz_fact": 45.93908629441625, "ndn_plan": 1.5492957746478875, "ndn_fact": 0.5633802816901409, "ndn_delta_pct": -63.63636363636363, "gir_ready": "Нет", "start_year": "2028", "structure_error": 0.2, "heff": "P10>Нэф>P90", "kp": "P10>Кп>P90", "contact_forecast": "Р10", "area": "Р10", "nnt": ">P10", "sgm": "1", "npv_positive": "0", "success": "У", "effectiveness": "0", "deposition": "РУСЛА", "heff_method_1": "RMS", "heff_method_2": "RMS", "rb_plan": "ВОРБ", "rb_fact": "ДО", "p10_p90_plan": "3.7", "p10_p90_fact": "-", "ngz_class": "Р10-Р50", "kpr_eff_plan": "0.31", "kpr_eff_fact": "0.06", "kpr_eff_delta_pct": -80.64516129032259, "kpr_nnt_plan": "0.86", "kpr_nnt_fact": "0.26", "kpr_nnt_delta_pct": -69.76744186046511, "driver": "Тюменка", "triz": "ТРИЗ", "decision": "Заложение скважин в русла по RGB", "test": "+", "comment": "Не подтвердились целевые дебиты", "cost_delta_pct": 17.97011501576624, "ngz_delta_pct": 2.840909090909105, "ndn_delta_abs": -0.9859154929577466}, {"id": 26, "do": "С", "well": "26", "stage": "Разведка", "gcos_plan": 1.0, "gcos_fact": 1.0, "cost_plan": 16.819438956934018, "cost_fact": 17.366886769261164, "ngz_plan": 59.64467005076142, "ngz_fact": 43.172588832487314, "ndn_plan": 3.098591549295775, "ndn_fact": 0.9859154929577465, "ndn_delta_pct": -68.18181818181819, "gir_ready": "Нет", "start_year": "2028", "structure_error": 1.0, "heff": "P10>Нэф>P50", "kp": "P10>Кп>P90", "contact_forecast": "P90", "area": "<P90", "nnt": "P10>ННТ>P50", "sgm": "0.5", "npv_positive": "0", "success": "У", "effectiveness": "0", "deposition": "РУСЛА", "heff_method_1": "RMS", "heff_method_2": "RMS", "rb_plan": "ВОРБ", "rb_fact": "ДО", "p10_p90_plan": "4.5", "p10_p90_fact": "-", "ngz_class": "Р90-Р50", "kpr_eff_plan": "0.3", "kpr_eff_fact": "0.03", "kpr_eff_delta_pct": -90.00000000000001, "kpr_nnt_plan": "0.86", "kpr_nnt_fact": "0.14", "kpr_nnt_delta_pct": -83.72093023255813, "driver": "Тюменка", "triz": "ТРИЗ", "decision": "Заложение скважин в русла по RGB", "test": "+", "comment": "Не подтвердились целевые дебиты", "cost_delta_pct": 3.2548518040873997, "ngz_delta_pct": -27.617021276595732, "ndn_delta_abs": -2.1126760563380285}, {"id": 27, "do": "С", "well": "27", "stage": "Поиск", "gcos_plan": 0.95, "gcos_fact": 1.0, "cost_plan": 5.800592256025287, "cost_fact": 6.200526140655868, "ngz_plan": 4.6700507614213205, "ngz_fact": 7.614213197969543, "ndn_plan": 0.34366197183098596, "ndn_fact": 0.26760563380281693, "ndn_delta_pct": -22.131147540983605, "gir_ready": "Нет", "start_year": "", "structure_error": 1.0, "heff": "P10>Нэф>P50", "kp": "P10>Кп>P90", "contact_forecast": "Р50-Р90", "area": "Р10", "nnt": "Р10", "sgm": "1", "npv_positive": "0", "success": "У", "effectiveness": "0", "deposition": "РУСЛА", "heff_method_1": "RMS", "heff_method_2": "RMS", "rb_plan": "ДО", "rb_fact": "ДО", "p10_p90_plan": "-", "p10_p90_fact": "-", "ngz_class": "+67% от Р50_пл", "kpr_eff_plan": "", "kpr_eff_fact": "", "kpr_eff_delta_pct": null, "kpr_nnt_plan": "-", "kpr_nnt_fact": "-", "kpr_nnt_delta_pct": null, "driver": "Тюменка", "triz": "ТРИЗ", "decision": "", "test": "+", "comment": "Актуализация БК", "cost_delta_pct": 6.894707763938324, "ngz_delta_pct": 63.043478260869534, "ndn_delta_abs": -0.07605633802816902}, {"id": 28, "do": "МР", "well": "28", "stage": "Поиск", "gcos_plan": 0.66, "gcos_fact": 1.0, "cost_plan": 100.00000000000001, "cost_fact": 92.09798498617148, "ngz_plan": 50.0, "ngz_fact": null, "ndn_plan": 20.0, "ndn_fact": 8.028169014084508, "ndn_delta_pct": -59.859154929577464, "gir_ready": "Нет", "start_year": "", "structure_error": 1.0, "heff": "Р50", "kp": "P10>Кп>P90", "contact_forecast": "перекорреляция пластов", "area": "", "nnt": "", "sgm": "0", "npv_positive": "0.5", "success": "У", "effectiveness": "0", "deposition": "КОНУС ВЫНОСА", "heff_method_1": "АИ", "heff_method_2": "АИ", "rb_plan": "ВОРБ", "rb_fact": "ВОРБ", "p10_p90_plan": "-", "p10_p90_fact": "", "ngz_class": "-", "kpr_eff_plan": "0.3", "kpr_eff_fact": "0.047", "kpr_eff_delta_pct": -84.33333333333334, "kpr_nnt_plan": "7.1", "kpr_nnt_fact": "1.1", "kpr_nnt_delta_pct": -84.50704225352113, "driver": "Ач", "triz": "ТРИЗ", "decision": "Максимальные сумм эффективные толщины по Ач пластам (АИ)", "test": "+", "comment": "Актуализация БК", "cost_delta_pct": -7.902015013828533, "ngz_delta_pct": null, "ndn_delta_abs": -11.971830985915492}, {"id": 29, "do": "МС", "well": "29", "stage": "Поиск", "gcos_plan": 0.69, "gcos_fact": 1.0, "cost_plan": 46.75112225121331, "cost_fact": 57.3686290003951, "ngz_plan": 100.76142131979697, "ngz_fact": 59.390862944162436, "ndn_plan": 7.323943661971832, "ndn_fact": 0.0, "ndn_delta_pct": -100.0, "gir_ready": "Нет", "start_year": "2030", "structure_error": 2.1, "heff": "другой пласт (СГ1-2)", "kp": "-", "contact_forecast": "-", "area": "-", "nnt": "-", "sgm": "0", "npv_positive": "0", "success": "УУ", "effectiveness": "0", "deposition": "КОНУС + М-М БАРЫ", "heff_method_1": "АИ", "heff_method_2": "АИ", "rb_plan": "ВОРБ", "rb_fact": "ВОРБ", "p10_p90_plan": "6", "p10_p90_fact": "6.6", "ngz_class": "другой пласт", "kpr_eff_plan": "", "kpr_eff_fact": "", "kpr_eff_delta_pct": null, "kpr_nnt_plan": "-", "kpr_nnt_fact": "-", "kpr_nnt_delta_pct": null, "driver": "Неоком+Ач", "triz": "Традиционный коллектор", "decision": "АИ", "test": "+", "comment": "Не подверждены Ач и НХ (плановые пласты),коллектора нет, открыты НГЗ в СГ1-2. Выполнена сейсмич инверсия, но отсутствовали данные для калибровки в этих интервалах", "cost_delta_pct": 22.71069920445865, "ngz_delta_pct": -41.05793450881613, "ndn_delta_abs": -7.323943661971832}, {"id": 30, "do": "МС", "well": "30", "stage": "Поиск", "gcos_plan": 0.76, "gcos_fact": 1.0, "cost_plan": 29.39549585144212, "cost_fact": 67.09844954762585, "ngz_plan": 82.99492385786803, "ngz_fact": 82.23350253807106, "ndn_plan": 0.7929577464788732, "ndn_fact": 1.1464788732394366, "ndn_delta_pct": 44.58259325044406, "gir_ready": "Нет", "start_year": "2032", "structure_error": 1.0, "heff": "Р90", "kp": "Р90", "contact_forecast": "Р10", "area": ">Р10", "nnt": "P50>ННТ>P90", "sgm": "0.5", "npv_positive": "1", "success": "У", "effectiveness": "1", "deposition": "КОНУС ВЫНОСА", "heff_method_1": "АИ и Vp/Vs", "heff_method_2": "АИ и Vp/Vs", "rb_plan": "ВОРБ", "rb_fact": "ДО", "p10_p90_plan": "20", "p10_p90_fact": "-", "ngz_class": "Р10-Р50", "kpr_eff_plan": "0.16", "kpr_eff_fact": "0.16", "kpr_eff_delta_pct": 0.0, "kpr_nnt_plan": "4.8", "kpr_nnt_fact": "4.5", "kpr_nnt_delta_pct": -6.2499999999999964, "driver": "Ач", "triz": "ТРИЗ", "decision": "Сейсмическая инверсия", "test": "+", "comment": "! Толщины подтверждены маленькие, а запасы после переоценки выросли!", "cost_delta_pct": 128.26098898527016, "ngz_delta_pct": -0.9174311926605672, "ndn_delta_abs": 0.35352112676056346}], "source": "Проба2.xlsx", "updated": "10.06.2026 18:37"};
+    const colors = ['#1261a6', '#00a3a3', '#16805b', '#b86b00', '#bd2d2d', '#6d5bd0', '#5c6f82'];
+    const state = { sortKey: 'risk_score', sortDir: -1 };
+
+    function n(value) { const number = Number(value); return Number.isFinite(number) ? number : 0; }
+    function has(value) { return value !== null && value !== undefined && value !== ''; }
+    function fmt(value, digits = 1) { return Number.isFinite(Number(value)) ? Number(value).toLocaleString('ru-RU', { maximumFractionDigits: digits }) : '-'; }
+    function pct(value) { return Number.isFinite(Number(value)) ? `${Number(value).toLocaleString('ru-RU', { maximumFractionDigits: 1 })}%` : '-'; }
+    function html(value) { return String(value ?? '').replace(/[&<>"']/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[s])); }
+    function sum(rows, key) { return rows.reduce((acc, row) => acc + n(row[key]), 0); }
+    function avg(rows, key) { const vals = rows.map(row => Number(row[key])).filter(Number.isFinite); return vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : 0; }
+    function unique(key) { return [...new Set(DATA.records.map(row => row[key]).filter(has))].sort((a,b) => String(a).localeCompare(String(b), 'ru')); }
+    function fillSelect(id, values, label) {
+      document.getElementById(id).innerHTML = `<option value="">${label}</option>` + values.map(v => `<option value="${html(v)}">${html(v)}</option>`).join('');
+    }
+    function girValues() {
+      return [...document.querySelectorAll('#girMenu input[type="checkbox"]:checked')].map(input => input.value);
+    }
+    function updateGirText() {
+      const values = girValues();
+      document.getElementById('girToggle').textContent = values.length ? values.join(', ') : 'Любая готовность';
+    }
+    function fillGirMulti(values) {
+      document.getElementById('girMenu').innerHTML = values.map(value => `
+        <label class="multi-option"><input type="checkbox" value="${html(value)}"><span>${html(value)}</span></label>
+      `).join('');
+      document.querySelectorAll('#girMenu input').forEach(input => input.addEventListener('change', () => {
+        updateGirText();
+        render();
+      }));
+      updateGirText();
+    }
+    function currentRows() {
+      const ids = ['do','stage','triz','driver'];
+      const filters = Object.fromEntries(ids.map(id => [id, document.getElementById(id).value]));
+      const girSelected = girValues();
+      const search = document.getElementById('search').value.trim().toLowerCase();
+      return DATA.records.filter(row => {
+        if (filters.do && row.do !== filters.do) return false;
+        if (filters.stage && row.stage !== filters.stage) return false;
+        if (girSelected.length && !girSelected.includes(row.gir_ready)) return false;
+        if (filters.triz && row.triz !== filters.triz) return false;
+        if (filters.driver && row.driver !== filters.driver) return false;
+        if (search) {
+          const hay = [row.well,row.do,row.stage,row.deposition,row.driver,row.decision,row.comment,row.test].join(' ').toLowerCase();
+          if (!hay.includes(search)) return false;
+        }
+        return true;
+      }).map(row => ({ ...row, risk_score: riskScore(row) }));
+    }
+    function riskScore(row) {
+      let score = 0;
+      if (row.gir_ready === 'Нет') score += 28;
+      if (row.gir_ready === 'Частично') score += 16;
+      if (['Н', 'УУ'].includes(row.success)) score += row.success === 'Н' ? 28 : 14;
+      if (n(row.ndn_delta_pct) <= -40) score += 22;
+      else if (n(row.ndn_delta_pct) <= -20) score += 12;
+      if (n(row.cost_delta_pct) >= 20) score += 12;
+      if (n(row.structure_error) >= 2) score += 8;
+      if (String(row.test).includes('Неуспех')) score += 10;
+      return score;
+    }
+    function isGirReady(row) {
+      return row.gir_ready === 'Да' || row.gir_ready === 'Частично';
+    }
+    function isEconomicallySuccessful(row) {
+      const value = n(row.npv_positive);
+      return value === 1 || value === 0.5;
+    }
+    function group(rows, key) {
+      const map = new Map();
+      rows.forEach(row => {
+        const label = has(row[key]) ? row[key] : 'Не указано';
+        if (!map.has(label)) map.set(label, []);
+        map.get(label).push(row);
+      });
+      return [...map.entries()].map(([label, items]) => ({
+        label, items, count: items.length,
+        ndn_fact: sum(items, 'ndn_fact'), ndn_plan: sum(items, 'ndn_plan'),
+        cost_fact: sum(items, 'cost_fact'), ready: items.filter(isGirReady).length,
+        risk: avg(items.map(x => ({ risk_score: riskScore(x) })), 'risk_score'),
+        ndn_delta_pct: sum(items, 'ndn_plan') ? (sum(items, 'ndn_fact') / sum(items, 'ndn_plan') - 1) * 100 : 0,
+      }));
+    }
+    function top(rows, key, dir = -1, limit = 10) {
+      return rows.slice().sort((a,b) => (n(a[key]) - n(b[key])) * dir).slice(0, limit);
+    }
+    function prepareCanvas(id) {
+      const canvas = document.getElementById(id);
+      const ratio = window.devicePixelRatio || 1;
+      const rect = canvas.getBoundingClientRect();
+      canvas.width = Math.max(1, rect.width * ratio);
+      canvas.height = Math.max(1, rect.height * ratio);
+      const ctx = canvas.getContext('2d');
+      ctx.setTransform(ratio,0,0,ratio,0,0);
+      ctx.clearRect(0,0,rect.width,rect.height);
+      ctx.font = '12px Arial';
+      ctx.fillStyle = '#122033';
+      return { ctx, width: rect.width, height: rect.height };
+    }
+    function drawBars(id, rows, opts = {}) {
+      const { ctx, width, height } = prepareCanvas(id);
+      const padL = opts.padL || 112, padR = 18, padT = 18, rowH = Math.max(22, (height - padT - 24) / Math.max(rows.length, 1));
+      const max = Math.max(...rows.map(r => Math.max(n(r.value), n(r.value2 || 0))), 1);
+      rows.forEach((row, i) => {
+        const y = padT + i * rowH;
+        ctx.fillStyle = '#5b6472';
+        ctx.textAlign = 'right';
+        ctx.fillText(String(row.label).slice(0, 18), padL - 8, y + 14);
+        const w = n(row.value) / max * (width - padL - padR);
+        ctx.fillStyle = row.color || opts.color || colors[i % colors.length];
+        ctx.fillRect(padL, y + 3, w, Math.max(8, rowH * .42));
+        if (has(row.value2)) {
+          const w2 = n(row.value2) / max * (width - padL - padR);
+          ctx.fillStyle = 'rgba(18,97,166,.22)';
+          ctx.fillRect(padL, y + Math.max(13, rowH * .52), w2, 6);
+        }
+        ctx.fillStyle = '#122033';
+        ctx.textAlign = 'left';
+        ctx.fillText(row.format ? row.format(row.value) : fmt(row.value), padL + w + 6, y + 14);
+      });
+    }
+    function drawDonut(id, groups) {
+      const { ctx, width, height } = prepareCanvas(id);
+      const total = Math.max(1, groups.reduce((a,g) => a + g.count, 0));
+      const cx = width / 2, cy = height / 2, r = Math.min(width, height) * .34;
+      let start = -Math.PI / 2;
+      groups.forEach((g, i) => {
+        const angle = g.count / total * Math.PI * 2;
+        ctx.beginPath(); ctx.moveTo(cx, cy); ctx.arc(cx, cy, r, start, start + angle); ctx.closePath();
+        ctx.fillStyle = colors[i % colors.length]; ctx.fill(); start += angle;
+      });
+      ctx.beginPath(); ctx.arc(cx, cy, r * .58, 0, Math.PI * 2); ctx.fillStyle = '#fff'; ctx.fill();
+      ctx.textAlign = 'center'; ctx.fillStyle = '#122033'; ctx.font = 'bold 22px Arial'; ctx.fillText(fmt(total,0), cx, cy - 2);
+      ctx.font = '12px Arial'; ctx.fillStyle = '#667085'; ctx.fillText('объектов', cx, cy + 17);
+    }
+    function drawScatter(rows) {
+      const { ctx, width, height } = prepareCanvas('scatter');
+      const pad = 42, maxX = Math.max(...rows.map(r => n(r.cost_fact)), 1), maxY = Math.max(...rows.map(r => n(r.ndn_fact)), 1);
+      ctx.strokeStyle = '#d8dee8'; ctx.beginPath(); ctx.moveTo(pad, height-pad); ctx.lineTo(width-pad, height-pad); ctx.lineTo(width-pad, pad); ctx.stroke();
+      rows.forEach(row => {
+        const x = pad + n(row.cost_fact) / maxX * (width - pad * 2);
+        const y = height - pad - n(row.ndn_fact) / maxY * (height - pad * 2);
+        const r = 4 + Math.min(12, riskScore(row) / 8);
+        ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2);
+        ctx.fillStyle = riskScore(row) > 45 ? 'rgba(189,45,45,.76)' : row.gir_ready === 'Да' ? 'rgba(22,128,91,.70)' : 'rgba(184,107,0,.72)';
+        ctx.fill();
+      });
+      ctx.fillStyle = '#667085'; ctx.textAlign = 'center'; ctx.fillText('Стоимость факт, млн руб', width / 2, height - 8);
+      ctx.save(); ctx.translate(13, height / 2); ctx.rotate(-Math.PI / 2); ctx.fillText('НДН факт, млн т', 0, 0); ctx.restore();
+    }
+    function renderKpis(rows) {
+      const total = rows.length || 1, ready = rows.filter(isGirReady).length, problems = rows.filter(r => riskScore(r) >= 40).length;
+      const ndnPlan = sum(rows,'ndn_plan'), ndnFact = sum(rows,'ndn_fact'), ndnDelta = ndnPlan ? (ndnFact / ndnPlan - 1) * 100 : 0;
+      const success = rows.filter(r => ['БУ','У','УУ'].includes(r.success)).length;
+      const economic = rows.filter(isEconomicallySuccessful).length;
+      const cards = [
+        ['Объекты в выборке', fmt(rows.length,0), 'после фильтров', '--blue'],
+        ['НДН факт, млн т', fmt(ndnFact,2), `план ${fmt(ndnPlan,2)}`, '--cyan'],
+        ['Отклонение НДН', pct(ndnDelta), `${fmt(ndnFact - ndnPlan,2)} млн т`, ndnDelta >= 0 ? '--green' : '--red'],
+        ['Готовность к ГИР', pct(ready / total * 100), `${ready} из ${rows.length}`, '--green'],
+        ['Проблемные объекты', fmt(problems,0), 'индекс риска >= 40', problems ? '--red' : '--green'],
+        ['Успешность', pct(success / total * 100), `${success} БУ/У/УУ`, '--violet'],
+        ['Экономическая успешность', pct(economic / total * 100), `${economic} из ${rows.length} NPV>0 = 1/0,5`, '--green'],
+        ['Стоимость факт, млн руб', fmt(sum(rows,'cost_fact'),1), `∆ ${pct(avg(rows,'cost_delta_pct'))}`, '--amber'],
+      ];
+      document.getElementById('kpis').innerHTML = cards.map(c => `<div class="kpi" style="--accent:var(${c[3]})"><span>${c[0]}</span><b>${c[1]}</b><small>${c[2]}</small></div>`).join('');
+    }
+    function renderInsights(rows) {
+      const bestDo = group(rows,'do').sort((a,b) => b.ndn_fact - a.ndn_fact)[0];
+      const weakDo = group(rows,'do').filter(g => g.ndn_plan > 0).sort((a,b) => a.ndn_delta_pct - b.ndn_delta_pct)[0];
+      const topProblem = top(rows.map(r => ({ ...r, risk_score: riskScore(r) })), 'risk_score', -1, 1)[0];
+      const triz = group(rows,'triz').sort((a,b) => b.ndn_fact - a.ndn_fact)[0];
+      document.getElementById('insights').innerHTML = [
+        `<div class="insight"><b>${html(bestDo?.label || '-')}</b><p>максимальный НДН факт по ДО: ${fmt(bestDo?.ndn_fact,2)} млн т</p></div>`,
+        `<div class="insight"><b>${html(weakDo?.label || '-')}</b><p>минимальное выполнение НДН: ${pct(weakDo?.ndn_delta_pct)}</p></div>`,
+        `<div class="insight"><b>ПРБ ${html(topProblem?.well || '-')}</b><p>самый высокий индекс риска: ${fmt(topProblem?.risk_score,0)}</p></div>`,
+        `<div class="insight"><b>${html(triz?.label || '-')}</b><p>ведущий тип по НДН факт: ${fmt(triz?.ndn_fact,2)} млн т</p></div>`,
+      ].join('');
+    }
+    function renderGir(rows) {
+      const groups = group(rows,'gir_ready').sort((a,b) => b.count - a.count);
+      drawDonut('girDonut', groups);
+      const total = rows.length || 1;
+      document.getElementById('girSummary').innerHTML = groups.map((g,i) => `
+        <div style="margin-bottom:12px">
+          <h3>${html(g.label)} <span class="badge">${g.count}</span></h3>
+          <p>НДН факт: ${fmt(g.ndn_fact,2)} млн т, доля объектов ${pct(g.count / total * 100)}</p>
+          <div class="progress"><i style="--w:${Math.min(100, g.count / total * 100)}%;--c:${colors[i % colors.length]}"></i></div>
+        </div>`).join('');
+    }
+    function renderProblems(rows) {
+      const scored = rows.map(r => ({ ...r, risk_score: riskScore(r) })).sort((a,b) => b.risk_score - a.risk_score).slice(0, 12);
+      document.getElementById('problemList').innerHTML = scored.map(row => {
+        const cls = row.risk_score >= 55 ? 'red' : row.risk_score >= 35 ? 'amber' : 'green';
+        const reasons = [
+          row.gir_ready !== 'Да' ? `ГИР: ${row.gir_ready || '-'}` : '',
+          n(row.ndn_delta_pct) < 0 ? `НДН ${pct(row.ndn_delta_pct)}` : '',
+          n(row.cost_delta_pct) > 0 ? `стоимость +${pct(row.cost_delta_pct)}` : '',
+          ['Н','УУ'].includes(row.success) ? `успешность ${row.success}` : '',
+          row.test ? row.test : ''
+        ].filter(Boolean).slice(0,4).join(' · ');
+        return `<div class="problem-card">
+          <div class="problem-head"><h3>ПРБ ${html(row.well)} · ${html(row.do)} · ${html(row.stage)}</h3><span class="badge ${cls}">${fmt(row.risk_score,0)}</span></div>
+          <p>${html(reasons || 'Без критических отклонений')}</p>
+          <p style="margin-top:5px">НДН факт ${fmt(row.ndn_fact,2)} млн т, отложения: ${html(row.deposition || '-')}</p>
+        </div>`;
+      }).join('');
+    }
+    function renderHeatmap(rows) {
+      const dos = group(rows,'do').sort((a,b) => b.count - a.count).map(g => g.label).slice(0, 8);
+      const statuses = ['Да','Частично','Нет'];
+      const max = Math.max(...dos.flatMap(d => statuses.map(s => rows.filter(r => r.do === d && r.gir_ready === s).length)), 1);
+      document.getElementById('heatmap').innerHTML = `<div class="heat-row"><b>ДО</b>${statuses.map(s => `<b>${s}</b>`).join('')}</div>` + dos.map(d => `
+        <div class="heat-row">
+          <b>${html(d)}</b>
+          ${statuses.map(s => {
+            const items = rows.filter(r => r.do === d && r.gir_ready === s);
+            const alpha = .12 + items.length / max * .65;
+            return `<div class="heat-cell" style="background:rgba(18,97,166,${alpha})"><b>${items.length}</b>${fmt(sum(items,'ndn_fact'),1)} млн т</div>`;
+          }).join('')}
+        </div>`).join('');
+    }
+    function renderTable(rows) {
+      const sorted = rows.slice().sort((a,b) => {
+        const av = a[state.sortKey], bv = b[state.sortKey];
+        if (typeof av === 'number' || typeof bv === 'number') return (n(av) - n(bv)) * state.sortDir;
+        return String(av ?? '').localeCompare(String(bv ?? ''), 'ru') * state.sortDir;
+      });
+      document.querySelector('#detail tbody').innerHTML = sorted.map(row => `
+        <tr>
+          <td>ПРБ ${html(row.well)}</td><td>${html(row.do)}</td><td>${html(row.stage)}</td><td>${html(row.gir_ready)}</td>
+          <td>${fmt(row.ndn_fact,3)}</td><td>${fmt(row.ndn_plan,3)}</td><td>${pct(row.ndn_delta_pct)}</td>
+          <td>${fmt(row.cost_fact,1)}</td><td>${pct(row.cost_delta_pct)}</td><td>${fmt(row.ngz_fact,2)}</td>
+          <td>${html(row.success)}</td><td>${html(row.deposition)}</td><td>${html(row.driver)}</td><td>${html(row.triz)}</td>
+          <td>${fmt(riskScore(row),0)}</td><td style="text-align:left;max-width:360px;overflow:hidden;text-overflow:ellipsis">${html([row.decision,row.comment].filter(Boolean).join(' / '))}</td>
+        </tr>`).join('');
+    }
+    function renderCharts(rows) {
+      const sliceKey = document.getElementById('ndnSlice').value || 'do';
+      drawBars('ndnSliceChart', group(rows, sliceKey).sort((a,b) => b.ndn_fact - a.ndn_fact).slice(0,10).map((g, i) => ({ label:g.label, value:g.ndn_fact, value2:g.ndn_plan, color: colors[i % colors.length], format:v=>fmt(v,2) })), { padL: 130, color:'#1261a6' });
+      drawBars('doNdn', group(rows,'do').sort((a,b) => b.ndn_fact - a.ndn_fact).slice(0,10).map(g => ({ label:g.label, value:g.ndn_fact, value2:g.ndn_plan, format:v=>fmt(v,2) })), { padL: 80, color:'#1261a6' });
+      drawScatter(rows);
+      drawBars('depChart', group(rows,'deposition').sort((a,b) => b.ndn_fact - a.ndn_fact).slice(0,8).map(g => ({ label:g.label, value:g.ndn_fact, format:v=>fmt(v,2) })), { padL: 118, color:'#00a3a3' });
+      drawBars('trizChart', group(rows,'triz').sort((a,b) => b.ndn_fact - a.ndn_fact).map((g,i) => ({ label:g.label, value:g.ndn_fact, color: colors[(i+2)%colors.length], format:v=>fmt(v,2) })), { padL: 122 });
+    }
+    function render() {
+      const rows = currentRows();
+      renderKpis(rows); renderInsights(rows); renderGir(rows); renderProblems(rows); renderHeatmap(rows); renderTable(rows); renderCharts(rows);
+    }
+
+    fillSelect('do', unique('do'), 'Все ДО');
+    fillSelect('stage', unique('stage'), 'Все этапы');
+    fillGirMulti(unique('gir_ready'));
+    fillSelect('triz', unique('triz'), 'Все типы');
+    fillSelect('driver', unique('driver'), 'Все пласты');
+    ['do','stage','triz','driver','search','ndnSlice'].forEach(id => {
+      document.getElementById(id).addEventListener('input', render);
+      document.getElementById(id).addEventListener('change', render);
+    });
+    document.getElementById('girToggle').addEventListener('click', () => {
+      document.getElementById('girFilter').classList.toggle('open');
+    });
+    document.addEventListener('click', event => {
+      if (!document.getElementById('girFilter').contains(event.target)) document.getElementById('girFilter').classList.remove('open');
+    });
+    document.querySelectorAll('th[data-sort]').forEach(th => th.addEventListener('click', () => {
+      const key = th.dataset.sort;
+      state.sortDir = state.sortKey === key ? -state.sortDir : -1;
+      state.sortKey = key;
+      render();
+    }));
+    window.addEventListener('resize', render);
+    render();
+  </script>
+</body>
+</html>
